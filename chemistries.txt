@@ -1,5 +1,0 @@
-#AssayName	Read1	Index1	Index2	Read2
-s3s4	read1:0	index1:10	index2:10	index3:8,null:20,read2:0
-sci	read1:0	index1:8,index2:10	index3:8,index4:10	read2:0
-truseq	read1:0	index1:10	index2:10	read2:0
-nextera	read1:0	index1:10	index2:10	read2:0

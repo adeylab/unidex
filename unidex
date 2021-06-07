@@ -1,0 +1,227 @@
+#!/usr/bin/perl
+
+# Defaults here (currently hardcoded, move to config file later)
+
+$modes_file = "/home/groups/oroaklab/src/unidex/modes.cfg";
+$fastq_path = "/home/groups/oroaklab/fastq";
+$dex_path = "/home/groups/oroaklab/demultiplex";
+$def_hd = 2;
+
+# Description here
+
+$die = "
+
+UNIDEX (Universal Demultiplexer, v0.210607-test1)
+
+Usage:
+
+unidex [options] 
+
+Options:
+  -R  [STR]   Run Folder (where fastq files are present)
+  -M  [LIST]  Mode list - modes must be specified in the modes.cfg file ($modes_file)
+              Modes must be comma separated and will demultiplex in specified order listed.
+
+
+Default Options:
+  -O  [STR]   Output folder (def = run name, -R)
+  -d  [0,1,2] Hamming distance (max 2, def = $def_hd)
+
+Default Locations:
+  -r  [PATH]  Fastq folder full path (def = $fastq_path)
+  -o  [PATH]  Output folder (def = $dex_path)
+  -m  [STR]   Mode config file (def = $modes_file)
+  
+Fastq Input (default = auto detect):
+  -A  [STR]   Read 1 fastq
+  -B  [STR]   Read 2 fastq
+  -C  [STR]   Index 1 fastq
+  -D  [STR]   Index 2 fastq
+  
+Other Options:
+  -V          Verbose / debug mode (outputs to STDERR)
+
+
+";
+
+# load & parse options
+use Getopt::Std; %opt = ();
+getopts("R:M:O:r:o:m:A:B:C:D:d:V", \%opt);
+
+if (!defined $opt{'R'}) {
+	if (defined $opt{'A'} || defined $opt{'B'} || defined $opt{'C'} || defined $opt{'D'}) {
+		if (!defined $opt{'O'}) {
+			die "ERROR: When not supplying -R and instead specifying individual fastq files, an output name must be provided (-O).";
+		}
+	} else {
+		die "ERROR: If -R is not specified, each input fastq must be specified (min of 1)!";
+	}
+}
+if (!defined $opt{'M'}) {
+	die "ERROR: Modes list must be specified with one or more modes!\n";
+} else {
+	@MODES_LIST = split(/,/, $opt{'M'});
+	foreach $mode (@MODES_LIST) {$MODES{$mode} = 0};
+}
+if (defined $opt{'r'}) {$fastq_path = $opt{'r'}}; $fastq_path =~ s/\/$//;
+if (defined $opt{'o'}) {$dex_path = $opt{'o'}}; $dex_path =~ s/\/$//;
+if (defined $opt{'m'}) {$modes_file = $opt{'m'}};
+if (!defined $opt{'O'}) {$opt{'O'} = $opt{'R'}};
+$out_name = $opt{'O'}; $out_name =~ s/\/$//;
+$run_name = $opt{'R'}; $run_name =~ s/\/$//;
+
+
+
+# identify input fastq files
+if (defined $opt{'R'}) {
+	if (!defined $opt{'A'}) {
+		if (-e "$fastq_path/$run_name/Undetermined_S0_L001_R1_001.fastq.gz") {
+			$read1_fastq = "$fastq_path/$run_name/Undetermined_S0_L001_R1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L002_R1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L003_R1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L004_R1_001.fastq.gz";
+		} elsif (-e "$fastq_path/$run_name/Undetermined_S0_R1_001.fastq.gz") {
+			$read1_fastq = "$fastq_path/$run_name/Undetermined_S0_R1_001.fastq.gz";
+		} else {
+			$read1_fastq = "null";
+		}
+	} else {$read1_fastq = "$opt{'A'}"}
+	if (defined $opt{'V'}) {print STDERR "INFO: read 1 fastq = $read1_fastq\n"};
+	
+	if (!defined $opt{'B'}) {
+		if (-e "$fastq_path/$run_name/Undetermined_S0_L001_R2_001.fastq.gz") {
+			$read2_fastq = "$fastq_path/$run_name/Undetermined_S0_L001_R2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L002_R2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L003_R2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L004_R2_001.fastq.gz";
+		} elsif (-e "$fastq_path/$run_name/Undetermined_S0_R2_001.fastq.gz") {
+			$read2_fastq = "$fastq_path/$run_name/Undetermined_S0_R2_001.fastq.gz";
+		} else {
+			$read2_fastq = "null";
+		}
+	} else {$read2_fastq = "$opt{'B'}"}
+	if (defined $opt{'V'}) {print STDERR "INFO: read 2 fastq = $read2_fastq\n"};
+	
+	if (!defined $opt{'C'}) {
+		if (-e "$fastq_path/$run_name/Undetermined_S0_L001_I1_001.fastq.gz") {
+			$index1_fastq = "$fastq_path/$run_name/Undetermined_S0_L001_I1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L002_I1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L003_I1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L004_I1_001.fastq.gz";
+		} elsif (-e "$fastq_path/$run_name/Undetermined_S0_I1_001.fastq.gz") {
+			$index1_fastq = "$fastq_path/$run_name/Undetermined_S0_I1_001.fastq.gz";
+		} else {
+			$index1_fastq = "null";
+		}
+	} else {$index1_fastq = "$opt{'C'}"}
+	if (defined $opt{'V'}) {print STDERR "INFO: index 1 fastq = $index1_fastq\n"};
+
+	if (!defined $opt{'D'}) {
+		if (-e "$fastq_path/$run_name/Undetermined_S0_L001_I2_001.fastq.gz") {
+			$index2_fastq = "$fastq_path/$run_name/Undetermined_S0_L001_I2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L002_I2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L003_I2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L004_I2_001.fastq.gz";
+		} elsif (-e "$fastq_path/$run_name/Undetermined_S0_I2_001.fastq.gz") {
+			$index2_fastq = "$fastq_path/$run_name/Undetermined_S0_I2_001.fastq.gz";
+		} else {
+			$index2_fastq = "null";
+		}
+	} else {$index2_fastq = "$opt{'D'}"}
+	if (defined $opt{'V'}) {print STDERR "INFO: index 2 fastq = $index2_fastq\n"};
+}
+
+# load modes
+%DEX_PARTS = ();
+open MODES, "$modes_file";
+while ($l = <MODES>) {
+	chomp $l;
+	if ($l =~ /^#/) {
+		@HEADER = split(/\t/, $l);
+	} else {
+		@P = split(/\t/, $l);
+		if (defined $MODES{$P[0]}) {
+			if (defined $opt{'V'}) {print STDERR "INFO: Mode $P[0] found. Parsing...\n"};
+			$MODES{$P[0]} = 1;
+			# parse the four reads and store information on components
+			%{$DEX_PARTS{$P[0]}} = ();
+			%{$INDEX_FILES{$P[0]}} = ();
+			for ($i = 1; $i <= 4; $i++) { # parse the four fastq reads
+				if ($P[$i] =~ /unused/i) {
+					if (defined $opt{'V'}) {print STDERR "\t$HEADER[$i] is unused.\n"};
+				} else {
+					if ($i == 1 && $read1_fastq eq "null") {die "ERROR: mode $P[0] requires Read 1 and read 1 fastq could not be detected or was not specified!\n"};
+					if ($i == 2 && $index1_fastq eq "null") {die "ERROR: mode $P[0] requires Index 1 and index 1 fastq could not be detected or was not specified!\n"};
+					if ($i == 3 && $index2_fastq eq "null") {die "ERROR: mode $P[0] requires Index 1 and index 1 fastq could not be detected or was not specified!\n"};
+					if ($i == 4 && $read2_fastq eq "null") {die "ERROR: mode $P[0] requires Read 2 and read 2 fastq could not be detected or was not specified!\n"};
+					$pos = 0;
+					@READ_PARTS = split(/,/, $P[$i]);
+					for ($part = 0; $part < @READ_PARTS; $part++) {
+						($part_name,$part_length) = split($READ_PARTS[$part]);
+						if ($part_name =~ /read/i) {
+							$read_number = $part_name; $read_number =~ s/read//i;
+							if (!defined $DEX_PARTS{$P[0]}{'read'}{$read_number}) {
+								$DEX_PARTS{$P[0]}{'read'}{$read_number} = ($i,$pos,$part_length);
+								$pos+=$part_length;
+							} else {
+								die "ERROR: Two instances of read - $read_number were specified in the mode configuration for $P[0]!\n";
+							}
+						} elsif ($part_name =~ /index/i) {
+							$index_number = $part_name; $index_number =~ s/index//i;
+							if ($index_number =~ /,/) { # HD override found
+								($number,$hd) = split(/,/, $index_number);
+								$index_number = $number;
+								$INDEX_HAMMING{$P[0]}{'index'}{$index_number} = $hd;
+							} else {
+								$INDEX_HAMMING{$P[0]}{'index'}{$index_number} = $def_hd;
+							}
+							if (!defined $DEX_PARTS{$P[0]}{'index'}{$index_number}) {
+								$DEX_PARTS{$P[0]}{'index'}{$index_number} = ($i,$pos,$part_length);
+								$INDEX_FILES{$P[0]}{'index'}{$index_number} = "null";
+								$pos+=$part_length;
+							} else {
+								die "ERROR: Two instances of index - $index_number were specified in the mode configuration for $P[0]!\n";
+							}
+						} elsif ($part_name =~ /null/i) {
+							$pos+=$part_length;
+						} else { # UMI / other component - will add as special field in read name
+							if (!defined $DEX_PARTS{$P[0]}{'other'}{$part_name}) {
+								$DEX_PARTS{$P[0]}{'other'}{$part_name} = ($i,$pos,$part_length);
+								$pos+=$part_length;
+							} else {
+								die "ERROR: Two instances of other - $part_name were specified in the mode configuration for $P[0]!\n";
+							}
+						}
+					}
+				}
+			}
+			
+			# report stored components
+			if (defined $opt{'V'}) {
+				foreach $class (keys %{$DEX_PARTS{$P[0]}}) {
+					print STDERR "\tClass: $class";
+					foreach $component (keys %{$DEX_PARTS{$P[0]}{$class}}) {
+						print "\t$component=$DEX_PARTS{$P[0]}{$class}[0],$DEX_PARTS{$P[0]}{$class}[1],$DEX_PARTS{$P[0]}{$class}[2]";
+					}
+					print STDERR "\n";
+				}
+			}
+			
+			# load index file locations
+			for ($i = 5; $i < @P; $i++) {
+				($index_name,$file) = split(/=/, $P[$i]);
+				$index_number = $index_name; $index_number =~ s/index//i;
+				if (defined $INDEX_FILES{$P[0]}{'index'}{$index_number}) {
+					$INDEX_FILES{$P[0]}{'index'}{$index_number} = $file;
+				} else {
+					print STDERR "\tWARNING: Index $index_number for $P[0] mode has a file but no index component specified! Ignoring file.\n";
+				}
+			}
+			
+			# check all index files are specified
+			foreach $index_number (keys %{$INDEX_FILES{$P[0]}{'index'}}) {
+				if ($INDEX_FILES{$P[0]}{'index'}{$index_number} eq "null") {
+					die "ERROR: Index $index_number for $P[0] mode has a component specified but no corresponding index file!\n";
+				}
+			}
+		}
+	}
+} close MODES;
+foreach $mode (@MODES_LIST) {
+	if ($MODES{$mode} < 1) {
+		die "ERROR: Mode $mode is listed but was not found in the modes config file: $modes_file!\n";
+	}
+}
+
+
+# read 1 = 1, index 1 = 2, index 2 = 3, read 2 = 4
+
+# load index files & compute hamming distance
