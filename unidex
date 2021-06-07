@@ -124,7 +124,9 @@ if (defined $opt{'R'}) {
 open MODES, "$modes_file";
 while ($l = <MODES>) {
 	chomp $l;
-	if ($l =~ /^#/) {
+	if ($1 =~ /^##/) {
+		# comment lines
+	} elsif ($l =~ /^#/) {
 		@HEADER = split(/\t/, $l);
 	} else {
 		@P = split(/\t/, $l);
@@ -156,8 +158,8 @@ while ($l = <MODES>) {
 							}
 						} elsif ($part_name =~ /index/i) {
 							$index_number = $part_name; $index_number =~ s/index//i;
-							if ($index_number =~ /,/) { # HD override found
-								($number,$hd) = split(/,/, $index_number);
+							if ($index_number =~ /=/) { # HD override found
+								($number,$hd) = split(/=/, $index_number);
 								$index_number = $number;
 								$INDEX_HAMMING{$P[0]}{'index'}{$index_number} = $hd;
 							} else {
@@ -225,3 +227,56 @@ foreach $mode (@MODES_LIST) {
 # read 1 = 1, index 1 = 2, index 2 = 3, read 2 = 4
 
 # load index files & compute hamming distance
+
+# hash of bases to swap out
+%OTHER_BASES = ();
+%{$OTHER_BASES{'A'}} = ("C" => "C", "G" => "G", "T" => "T", "N" => "N");
+%{$OTHER_BASES{'C'}} = ("A" => "A", "G" => "G", "T" => "T", "N" => "N");
+%{$OTHER_BASES{'G'}} = ("C" => "C", "A" => "A", "T" => "T", "N" => "N");
+%{$OTHER_BASES{'T'}} = ("C" => "C", "G" => "G", "A" => "A", "N" => "N");
+
+%MODE_IXN_TRUE_status = (); %MODE_IXN_CHECK_true = ();
+foreach $mode (@MODES_LIST) {
+	foreach $index_number (keys %{$INDEX_FILES{$mode}{'index'}}) {
+		open IN, "$INDEX_FILES{$mode}{'index'}{$index_number}";
+		while ($l = <IN>) {
+			chomp $l;
+			@P = split(/\t/, $l);
+			$MODE_IXN_TRUE_status{$mode}{$index_number}{$P[@P-1]} = "pass";
+			$MODE_IXN_CHECK_true{$mode}{$index_number}{$P[@P-1]} = {$P[@P-1]};
+		} close IN;
+		
+		# make HD hash
+		if ($INDEX_HAMMING{$mode}{'index'}{$index_number} > 0) {
+			for ($hd_round = 1; $hd_round <= $INDEX_HAMMING{$mode}{'index'}{$index_number}; $hd_round++) {
+				%HDSEQ_true = ();
+				foreach $seq (keys %{$MODE_IXN_CHECK_true{$mode}{$index_number}}) {
+					$true = $MODE_IXN_CHECK_true{$mode}{$index_number}{$seq};
+					@SEQ = split(//, $seq);
+					for ($ix_base = 0; $ix_base < @SEQ; $ix_base++) {
+						foreach $swap_base (keys %{$OTHER_BASES{$SEQ[$ix_base]}}) {
+							@NEW = @SEQ;
+							$NEW[$ix_base] = $swap_base;
+							$new = join("", @NEW);
+							if (!defined $HDSEQ_true{$new}) {
+								$HDSEQ_true{$new} = $true;
+							} else {
+								if ($HDSEQ_true{$new} ne $true) {
+									$HDSEQ_true{$new} = "collision"; # equal HD collision
+								}
+							}
+						}
+					}
+				}
+				# now load to the main hash & check they have not been observed with conflict
+				foreach $seq (keys %HDSEQ_true) {
+					if (!defined $MODE_IXN_CHECK_true{$mode}{$index_number}{$seq}) {
+						$MODE_IXN_CHECK_true{$mode}{$index_number}{$seq} = $HDSEQ_true{$seq};
+					} else {
+						# DO nothing - this is a collision from a greater hamming to a lesser - keep lesser
+					}
+				}
+			}
+		}
+	}
+}
