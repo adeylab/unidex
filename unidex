@@ -267,7 +267,7 @@ if (defined $opt{'V'}) {print STDERR "INFO: Generating hamming hashes ...\n"};
 %MODE_IXN_CHECK_true = ();
 foreach $mode (@MODES_LIST) {
 	foreach $index_number (keys %{$INDEX_FILES{$mode}{'index'}}) {
-		if (defined $opt{'V'}) {print STDERR "\tMode: $mode, Index: $index_number, File = $INDEX_FILES{$mode}{'index'}{$index_number}\n"};
+		if (defined $opt{'V'}) {print STDERR "INFO: Mode: $mode, Index: $index_number, File = $INDEX_FILES{$mode}{'index'}{$index_number}\n"};
 		if (-e "$INDEX_FILES{$mode}{'index'}{$index_number}") {} else {die "ERROR: File: $INDEX_FILES{$mode}{'index'}{$index_number} does not exist!\n"};
 		open IN, "$INDEX_FILES{$mode}{'index'}{$index_number}";
 		while ($l = <IN>) {
@@ -284,9 +284,9 @@ foreach $mode (@MODES_LIST) {
 		
 		# make HD hash
 		if ($INDEX_HAMMING{$mode}{'index'}{$index_number} > 0) {
-			if (defined $opt{'V'}) {print STDERR "INFO: Index $index_number HD = $INDEX_HAMMING{$mode}{'index'}{$index_number}, making HD hash.\n"};
+			if (defined $opt{'V'}) {print STDERR "\tIndex $index_number HD = $INDEX_HAMMING{$mode}{'index'}{$index_number}, making HD hash.\n"};
 			for ($hd_round = 1; $hd_round <= $INDEX_HAMMING{$mode}{'index'}{$index_number}; $hd_round++) {
-				if (defined $opt{'V'}) {print STDERR "HD Round = $hd_round\n"};
+				if (defined $opt{'V'}) {print STDERR "\t\tHD Round = $hd_round\n"};
 				%HDSEQ_true = ();
 				foreach $seq (keys %{$MODE_IXN_CHECK_true{$mode}{$index_number}}) {
 					$true = $MODE_IXN_CHECK_true{$mode}{$index_number}{$seq};
@@ -428,7 +428,7 @@ while ($in_tag[1] = <R1IN>) {
 				}
 			}
 			# add origID & number
-			$orig_name = $in_tag[1]; $orig_name =~ s/\#.+$//;
+			$orig_name = $in_tag[1]; $orig_name =~ s/\s.+$//; $orig_name =~ s/\#.+$//;
 			$read_name .= ":num=$MODE_assigned{$mode}:tag=$orig_name";
 			
 			# pull reads $ quals then print
@@ -436,7 +436,7 @@ while ($in_tag[1] = <R1IN>) {
 				if ($DEX_PARTS{$mode}{'read'}{$read_number}[2] < 1) { # rest of read from start position
 					$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'read'}{$read_number}[0]],
 											  $DEX_PARTS{$mode}{'read'}{$read_number}[1]);
-					$pulled_qual = substr($in_qual[$DEX_PARTS{$read}{'read'}{$read_number}[0]],
+					$pulled_qual = substr($in_qual[$DEX_PARTS{$mode}{'read'}{$read_number}[0]],
 										  $DEX_PARTS{$mode}{'read'}{$read_number}[1]);
 				} else {
 					$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'read'}{$read_number}[0]],
