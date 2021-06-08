@@ -293,7 +293,7 @@ foreach $mode (@MODES_LIST) {
 				%HDSEQ_true = ();
 				foreach $seq (keys %{$MODE_IXN_CHECK_true{$mode}{$index_number}}) {
 					$true = $MODE_IXN_CHECK_true{$mode}{$index_number}{$seq};
-					if (defined $opt{'V'}) {print STDERR "True = $true, permuting... (HD round $hd_round)\n"}; 
+					#if (defined $opt{'V'}) {print STDERR "True = $true, permuting... (HD round $hd_round)\n"}; 
 					@SEQ = split(//, $seq);
 					for ($ix_base = 0; $ix_base < @SEQ; $ix_base++) {
 						foreach $swap_base (keys %{$OTHER_BASES{$SEQ[$ix_base]}}) {
