@@ -272,24 +272,21 @@ foreach $mode (@MODES_LIST) {
 		open IN, "$INDEX_FILES{$mode}{'index'}{$index_number}";
 		while ($l = <IN>) {
 			chomp $l;
-			#if (defined $opt{'V'}) {print STDERR "\t\tInput line $l ... "};
 			@P = split(/\t/, $l);
 			if (defined $SUBSET{$mode}{$index_number}) {
 				if (defined $SUBSET{$mode}{$index_number}{$P[0]}) {
 					$MODE_IXN_CHECK_true{$mode}{$index_number}{$P[-1]} = $P[-1];
-					#if (defined $opt{'V'}) {print STDERR "Index stored as: $MODE_IXN_CHECK_true{$mode}{$index_number}{$P[@P-1]}\n"};
 				}
 			} else {
 				$MODE_IXN_CHECK_true{$mode}{$index_number}{$P[-1]} = $P[-1];
-				#if (defined $opt{'V'}) {print STDERR "Index stored as: $MODE_IXN_CHECK_true{$mode}{$index_number}{$P[@P-1]}\n"};
 			}
 		} close IN;
 		
 		# make HD hash
 		if ($INDEX_HAMMING{$mode}{'index'}{$index_number} > 0) {
-			#if (defined $opt{'V'}) {print STDERR "INFO: Index $index_number HD = $INDEX_HAMMING{$mode}{'index'}{$index_number}, making HD hash.\n"};
+			if (defined $opt{'V'}) {print STDERR "INFO: Index $index_number HD = $INDEX_HAMMING{$mode}{'index'}{$index_number}, making HD hash.\n"};
 			for ($hd_round = 1; $hd_round <= $INDEX_HAMMING{$mode}{'index'}{$index_number}; $hd_round++) {
-				#if (defined $opt{'V'}) {print STDERR "HD Round = $hd_round ...\n"};
+				if (defined $opt{'V'}) {print STDERR "HD Round = $hd_round\n"};
 				%HDSEQ_true = ();
 				foreach $seq (keys %{$MODE_IXN_CHECK_true{$mode}{$index_number}}) {
 					$true = $MODE_IXN_CHECK_true{$mode}{$index_number}{$seq};
@@ -335,16 +332,16 @@ foreach $mode (@MODES_LIST) {
 			if (defined $opt{'V'}) {print STDERR "\t\tIndex $index_number has a hamming of 0, so only exact matches will be considered.\n"};
 		}
 		
-		if (defined $opt{'V'}) {
-			%TRUE_count = ();
-			foreach $seq (keys %{$MODE_IXN_CHECK_true{$mode}{$index_number}}) {
-				$TRUE_count{$MODE_IXN_CHECK_true{$mode}{$index_number}{$seq}}++;
-			}
-			print STDERR "INFO: Mode: $mode, Index: $index_number, True sequences and HD assigned:\n";
-			foreach $true (sort {$b<=>$a} keys %TRUE_count) {
-				print STDERR "\t$true\t$TRUE_count{$true}\n";
-			}
-		}
+		#if (defined $opt{'V'}) {
+		#	%TRUE_count = ();
+		#	foreach $seq (keys %{$MODE_IXN_CHECK_true{$mode}{$index_number}}) {
+		#		$TRUE_count{$MODE_IXN_CHECK_true{$mode}{$index_number}{$seq}}++;
+		#	}
+		#	print STDERR "INFO: Mode: $mode, Index: $index_number, True sequences and HD assigned:\n";
+		#	foreach $true (sort {$b<=>$a} keys %TRUE_count) {
+		#		print STDERR "\t$true\t$TRUE_count{$true}\n";
+		#	}
+		#}
 	}
 }
 
