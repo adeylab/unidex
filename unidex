@@ -287,13 +287,13 @@ foreach $mode (@MODES_LIST) {
 		
 		# make HD hash
 		if ($INDEX_HAMMING{$mode}{'index'}{$index_number} > 0) {
-			if (defined $opt{'V'}) {print STDERR "\t\tIndex $index_number HD = $INDEX_HAMMING{$mode}{'index'}{$index_number}, making HD hash.\n"};
+			if (defined $opt{'V'}) {print STDERR "INFO: Index $index_number HD = $INDEX_HAMMING{$mode}{'index'}{$index_number}, making HD hash.\n"};
 			for ($hd_round = 1; $hd_round <= $INDEX_HAMMING{$mode}{'index'}{$index_number}; $hd_round++) {
-				if (defined $opt{'V'}) {print STDERR "\t\tHD Round = $hd_round ...\n"};
+				if (defined $opt{'V'}) {print STDERR "HD Round = $hd_round ...\n"};
 				%HDSEQ_true = ();
 				foreach $seq (keys %{$MODE_IXN_CHECK_true{$mode}{$index_number}}) {
 					$true = $MODE_IXN_CHECK_true{$mode}{$index_number}{$seq};
-					if (defined $opt{'V'}) {print STDERR "\t\tTrue = $true, permuting...\n"}; 
+					if (defined $opt{'V'}) {print STDERR "True = $true, permuting... (HD round $hd_round)\n"}; 
 					@SEQ = split(//, $seq);
 					for ($ix_base = 0; $ix_base < @SEQ; $ix_base++) {
 						foreach $swap_base (keys %{$OTHER_BASES{$SEQ[$ix_base]}}) {
@@ -303,12 +303,17 @@ foreach $mode (@MODES_LIST) {
 							if (!defined $HDSEQ_true{$new} && !defined $MODE_IXN_CHECK_true{$mode}{$index_number}{$new}) { # do not include if there is a lesser version
 								$HDSEQ_true{$new} = $true;
 								if (defined $opt{'V'}) {print STDERR "\t\tAdding HD = $new to True = $true.\n"};
-							} elsif ($HDSEQ_true{$new} ne $true) {
-								# equal collision
-								if (defined $opt{'V'}) {print STDERR "\t\t\tTrue = $true, HD = $new, Equal HD collision = $HDSEQ_true{$new} - Excluding both.\n"};
-								$HDSEQ_true{$new} = "collision";
+							} elsif (defined $HDSEQ_true{$new}) {
+								if ($HDSEQ_true{$new} ne $true) {
+									# equal collision
+									if (defined $opt{'V'}) {print STDERR "\t\t\tTrue = $true, HD = $new, Equal HD collision = $HDSEQ_true{$new} - Excluding both.\n"};
+									$HDSEQ_true{$new} = "collision";
+								} else {
+									# reversion to other sequence but same true
+									if (defined $opt{'V'}) {print STDERR "\t\t\tTrue = $true, HD = $new, matches previous HD sequence with same true.\n"};
+								}
 							} else {
-								# lesser collision
+								# lesser collision - do not add new one
 								if (defined $opt{'V'}) {print STDERR "\t\t\tTrue = $true, HD = $new, Lesser HD collision = $HDSEQ_true{$new} - Excluding new.\n"};
 							}
 						}
@@ -316,7 +321,7 @@ foreach $mode (@MODES_LIST) {
 				}
 				# now load to the main hash & check they have not been observed with conflict
 				foreach $seq (keys %HDSEQ_true) {
-					if ($HDSEQ_true{$new} !~ /collision/) {
+					if ($HDSEQ_true{$seq} !~ /collision/) {
 						$MODE_IXN_CHECK_true{$mode}{$index_number}{$seq} = $HDSEQ_true{$seq};
 					}
 				}
