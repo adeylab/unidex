@@ -323,6 +323,17 @@ foreach $mode (@MODES_LIST) {
 		} else {
 			if (defined $opt{'V'}) {print STDERR "\t\tIndex $index_number has a hamming of 0, so only exact matches will be considered.\n"};
 		}
+		
+		if (defined $opt{'V'}) {
+			%TRUE_count = ();
+			foreach $seq (keys %{$MODE_IXN_CHECK_true{$mode}{$index_number}}) {
+				$TRUE_count{$MODE_IXN_CHECK_true{$mode}{$index_number}{$seq}}++;
+			}
+			print STDERR "INFO: Mode: $mode, Index: $index_number, True sequences and HD assigned:\n";
+			foreach $true (sort {$b<=>$a} keys %TRUE_count) {
+				print STDERR "\t$true\t$TRUE_count{$true}\n";
+			}
+		}
 	}
 }
 
