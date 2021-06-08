@@ -289,10 +289,11 @@ foreach $mode (@MODES_LIST) {
 		if ($INDEX_HAMMING{$mode}{'index'}{$index_number} > 0) {
 			if (defined $opt{'V'}) {print STDERR "\t\tIndex $index_number HD = $INDEX_HAMMING{$mode}{'index'}{$index_number}, making HD hash.\n"};
 			for ($hd_round = 1; $hd_round <= $INDEX_HAMMING{$mode}{'index'}{$index_number}; $hd_round++) {
-				if (defined $opt{'V'}) {print STDERR "\t\t\tHD Round = $hd_round ...\n"};
+				if (defined $opt{'V'}) {print STDERR "\t\tHD Round = $hd_round ...\n"};
 				%HDSEQ_true = ();
 				foreach $seq (keys %{$MODE_IXN_CHECK_true{$mode}{$index_number}}) {
 					$true = $MODE_IXN_CHECK_true{$mode}{$index_number}{$seq};
+					if (defined $opt{'V'}) {print STDERR "\t\tTrue = $true, permuting...\n"}; 
 					@SEQ = split(//, $seq);
 					for ($ix_base = 0; $ix_base < @SEQ; $ix_base++) {
 						foreach $swap_base (keys %{$OTHER_BASES{$SEQ[$ix_base]}}) {
