@@ -335,6 +335,8 @@ if ($index2_fastq ne "null") {open I2IN, "$zcat $index2_fastq |"; open FAILI2, "
 
 # read 1 = 1, index 1 = 2, index 2 = 3, read 2 = 4
 
+if (defined $opt{'V'}) {print STDERR "INFO: Pulling reads and matching to indexes...\n"};
+
 # parse fastq lines in order of listed modes
 %MODE_assigned = (); $total_reads = 0;
 while ($in_tag[1] = <R1IN>) {
@@ -344,6 +346,13 @@ while ($in_tag[1] = <R1IN>) {
 	if ($read2_fastq ne "null") {$in_tag[4] = <R2IN>; chomp $in_tag[4]; $in_seq[4] = <R2IN>; chomp $in_seq[4]; $null = <R2IN>; $in_qual[4] = <R2IN>; chomp $in_qual[4]};
 	if ($index1_fastq ne "null") {$in_tag[2] = <I1IN>; chomp $in_tag[2]; $in_seq[2] = <I1IN>; chomp $in_seq[2]; $null = <I1IN>; $in_qual[2] = <I1IN>; chomp $in_qual[2]};
 	if ($index2_fastq ne "null") {$in_tag[3] = <I2IN>; chomp $in_tag[3]; $in_seq[3] = <I2IN>; chomp $in_seq[3]; $null = <I2IN>; $in_qual[3] = <I2IN>; chomp $in_qual[3]};
+	
+	if (defined $opt{'V'}) {
+		print STDERR "\tPulled Reads:\n";
+		for ($vi = 1; $vi <= 4; $vi++) {
+			if (defined $in_tag[$vi]) {print STDERR "\t\t$vi\t$in_tag[$vi]\t$in_seq[$vi]\t$in_qual[$vi]\n"};
+		}
+	}
 	
 	$read_passing = 0;
 	
@@ -356,12 +365,12 @@ while ($in_tag[1] = <R1IN>) {
 			$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'index'}{$index_number}[0]],
 								$DEX_PARTS{$mode}{'index'}{$index_number}[1],
 								$DEX_PARTS{$mode}{'index'}{$index_number}[2]);
-			if (defined $opt{'V'}) {print STDERR "\tINFO: Pulled Index Number $index_number = $pulled_sequence\n"};
+			if (defined $opt{'V'}) {print STDERR "\tPulled Index Number $index_number = $pulled_sequence\n"};
 			if (defined $MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}) {
 				$ix_pass++;
 				$corrected_combined .= "$MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}";
 			} else {
-				$ix_fail++;
+				$ix_fail++; $index_number = $MODE_ixCT{$mode}+1;
 			}
 		}
 		if ($ix_fail < 1 && $ix_pass == $MODE_ixCT{$mode}) {
@@ -389,18 +398,18 @@ while ($in_tag[1] = <R1IN>) {
 			
 			# pull reads $ quals then print
 			foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
-				if ($DEX_PARTS{$mode}{'index'}{$index_number}[2] < 1) { # rest of read from start position
-					$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'index'}{$index_number}[0]],
-											  $DEX_PARTS{$mode}{'index'}{$index_number}[1]);
-					$pulled_qual = substr($in_qual[$DEX_PARTS{$mode}{'index'}{$index_number}[0]],
-										  $DEX_PARTS{$mode}{'index'}{$index_number}[1]);
+				if ($DEX_PARTS{$mode}{'read'}{$read_number}[2] < 1) { # rest of read from start position
+					$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'read'}{$read_number}[0]],
+											  $DEX_PARTS{$mode}{'read'}{$read_number}[1]);
+					$pulled_qual = substr($in_qual[$DEX_PARTS{$read}{'read'}{$read_number}[0]],
+										  $DEX_PARTS{$mode}{'read'}{$read_number}[1]);
 				} else {
-					$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'index'}{$index_number}[0]],
-											  $DEX_PARTS{$mode}{'index'}{$index_number}[1],
-											  $DEX_PARTS{$mode}{'index'}{$index_number}[2]);
-					$pulled_qual = substr($in_qual[$DEX_PARTS{$mode}{'index'}{$index_number}[0]],
-										  $DEX_PARTS{$mode}{'index'}{$index_number}[1],
-										  $DEX_PARTS{$mode}{'index'}{$index_number}[2]);
+					$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'read'}{$read_number}[0]],
+											  $DEX_PARTS{$mode}{'read'}{$read_number}[1],
+											  $DEX_PARTS{$mode}{'read'}{$read_number}[2]);
+					$pulled_qual = substr($in_qual[$DEX_PARTS{$mode}{'read'}{$read_number}[0]],
+										  $DEX_PARTS{$mode}{'read'}{$read_number}[1],
+										  $DEX_PARTS{$mode}{'read'}{$read_number}[2]);
 				}
 				$handle = "$mode.R$read_number";
 				print $handle "$read_name#0/$read_number\n$pulled_sequence\n\+\n$pulled_qual\n";
