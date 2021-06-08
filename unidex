@@ -268,7 +268,8 @@ if (defined $opt{'V'}) {print STDERR "INFO: Generating hamming hashes ...\n"};
 foreach $mode (@MODES_LIST) {
 	foreach $index_number (keys %{$INDEX_FILES{$mode}{'index'}}) {
 		if (defined $opt{'V'}) {print STDERR "\tMode: $mode, Index: $index_number, File = $INDEX_FILES{$mode}{'index'}{$index_number}\n"};
-		open IN, "$INDEX_FILES{$mode}{'index'}{$index_number}" || die "ERROR: Cannot open index file: $INDEX_FILES{$mode}{'index'}{$index_number}!\n";
+		if (-e "$INDEX_FILES{$mode}{'index'}{$index_number}") {} else {die "ERROR: File: $INDEX_FILES{$mode}{'index'}{$index_number} does not exist!\n"};
+		open IN, "$INDEX_FILES{$mode}{'index'}{$index_number}";
 		while ($l = <IN>) {
 			chomp $l;
 			if (defined $opt{'V'}) {print STDERR "\t\tInput line $l ... "};
