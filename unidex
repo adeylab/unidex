@@ -60,11 +60,11 @@ if (!defined $opt{'R'}) {
 			die "ERROR: When not supplying -R and instead specifying individual fastq files, an output name must be provided (-O).";
 		}
 	} else {
-		die "ERROR: If -R is not specified, each input fastq must be specified (min of 1)!";
+		die "$die\nERROR: If -R is not specified, each input fastq must be specified (min of 1)!";
 	}
 }
 if (!defined $opt{'M'}) {
-	die "ERROR: Modes list must be specified with one or more modes!\n";
+	die "$die\nERROR: Modes list must be specified with one or more modes!\n";
 } else {
 	@MODES_LIST = split(/,/, $opt{'M'});
 	foreach $mode (@MODES_LIST) {$MODES{$mode} = 0};
