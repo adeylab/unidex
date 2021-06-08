@@ -191,7 +191,9 @@ while ($l = <MODES>) {
 							} else {
 								$INDEX_HAMMING{$P[0]}{'index'}{$index_number} = $def_hd;
 							}
+							if (defined $opt{'V'}) {print STDERR "INFO: mode $mode, index number $index_number hamming distance set to: $INDEX_HAMMING{$P[0]}{'index'}{$index_number}.\n"};
 							if (!defined $DEX_PARTS{$P[0]}{'index'}{$index_number}) {
+								if (defined $opt{'V'}) {print STDERR "INFO: mode $mode, index number $index_number being stored.\n"};
 								$DEX_PARTS{$P[0]}{'index'}{$index_number} = ($i,$pos,$part_length);
 								$INDEX_FILES{$P[0]}{'index'}{$index_number} = "null";
 								$pos+=$part_length;
@@ -217,7 +219,7 @@ while ($l = <MODES>) {
 				foreach $class (keys %{$DEX_PARTS{$P[0]}}) {
 					print STDERR "\tClass: $class";
 					foreach $component (keys %{$DEX_PARTS{$P[0]}{$class}}) {
-						print "\t$component=$DEX_PARTS{$P[0]}{$class}{$component}[0],$DEX_PARTS{$P[0]}{$class}{$component}[1],$DEX_PARTS{$P[0]}{$class}{$component}[2]";
+						print STDERR "\t$component=$DEX_PARTS{$P[0]}{$class}{$component}[0],$DEX_PARTS{$P[0]}{$class}{$component}[1],$DEX_PARTS{$P[0]}{$class}{$component}[2]";
 					}
 					print STDERR "\n";
 				}
