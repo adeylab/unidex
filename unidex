@@ -261,7 +261,7 @@ foreach $mode (@MODES_LIST) {
 %MODE_IXN_TRUE_status = (); %MODE_IXN_CHECK_true = ();
 foreach $mode (@MODES_LIST) {
 	foreach $index_number (keys %{$INDEX_FILES{$mode}{'index'}}) {
-		open IN, "$INDEX_FILES{$mode}{'index'}{$index_number}";
+		open IN, "$INDEX_FILES{$mode}{'index'}{$index_number}" || die "ERROR: Cannot open index file: $INDEX_FILES{$mode}{'index'}{$index_number}!\n";
 		while ($l = <IN>) {
 			chomp $l;
 			@P = split(/\t/, $l);
