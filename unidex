@@ -173,7 +173,7 @@ while ($l = <MODES>) {
 					$pos = 0;
 					@READ_PARTS = split(/,/, $P[$i]);
 					for ($part = 0; $part < @READ_PARTS; $part++) {
-						($part_name,$part_length) = split($READ_PARTS[$part]);
+						($part_name,$part_length) = split(/:/, $READ_PARTS[$part]);
 						if (defined $opt{'V'}) {print STDERR "\tname = $part_name, length = $part_length\n"};
 						if ($part_name =~ /read/i) {
 							$read_number = $part_name; $read_number =~ s/read//i;
