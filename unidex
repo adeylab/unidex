@@ -357,7 +357,7 @@ while ($in_tag[1] = <R1IN>) {
 	$read_passing = 0;
 	
 	# parse for each mode in order
-	for ($modeID = 0; $modeID < @MODES; $modeID++) {
+	for ($modeID = 0; $modeID < @MODES_LIST; $modeID++) {
 		$mode = $MODES[$modeID];
 		
 		if (defined $opt{'V'}) {print STDERR "\tParsing Mode: $mode\n"};
