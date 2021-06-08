@@ -287,7 +287,7 @@ foreach $mode (@MODES_LIST) {
 		
 		# make HD hash
 		if ($INDEX_HAMMING{$mode}{'index'}{$index_number} > 0) {
-			if (defined $opt{'V'}) {print STDERR "INFO: Index $index_number HD = $INDEX_HAMMING{$mode}{'index'}{$index_number}, making HD hash.\n"};
+			#if (defined $opt{'V'}) {print STDERR "INFO: Index $index_number HD = $INDEX_HAMMING{$mode}{'index'}{$index_number}, making HD hash.\n"};
 			for ($hd_round = 1; $hd_round <= $INDEX_HAMMING{$mode}{'index'}{$index_number}; $hd_round++) {
 				#if (defined $opt{'V'}) {print STDERR "HD Round = $hd_round ...\n"};
 				%HDSEQ_true = ();
