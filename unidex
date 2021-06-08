@@ -287,7 +287,9 @@ foreach $mode (@MODES_LIST) {
 		
 		# make HD hash
 		if ($INDEX_HAMMING{$mode}{'index'}{$index_number} > 0) {
+			if (defined $opt{'V'}) {print STDERR "\t\tIndex $index_number HD = $INDEX_HAMMING{$mode}{'index'}{$index_number}, making HD hash.\n"};
 			for ($hd_round = 1; $hd_round <= $INDEX_HAMMING{$mode}{'index'}{$index_number}; $hd_round++) {
+				if (defined $opt{'V'}) {print STDERR "\t\t\tHD Round = $hd_round ...\n"};
 				%HDSEQ_true = ();
 				foreach $seq (keys %{$MODE_IXN_CHECK_true{$mode}{$index_number}}) {
 					$true = $MODE_IXN_CHECK_true{$mode}{$index_number}{$seq};
@@ -302,6 +304,7 @@ foreach $mode (@MODES_LIST) {
 							} else {
 								if ($HDSEQ_true{$new} ne $true) {
 									$HDSEQ_true{$new} = "collision"; # equal HD collision
+									if (defined $opt{'V'}) {print STDERR "\t\t\tTrue = $true, HD = $new, Equal HD collision = $HDSEQ_true{$new}\n"};
 								}
 							}
 						}
@@ -313,9 +316,12 @@ foreach $mode (@MODES_LIST) {
 						$MODE_IXN_CHECK_true{$mode}{$index_number}{$seq} = $HDSEQ_true{$seq};
 					} else {
 						# DO nothing - this is a collision from a greater hamming to a lesser - keep lesser
+						if (defined $opt{'V'}) {print STDERR "\t\t\tTrue = $HDSEQ_true{$seq}, Seq = $seq, Collision with lesser = $MODE_IXN_CHECK_true{$mode}{$index_number}{$seq}, retaining lesser.\n"};
 					}
 				}
 			}
+		} else {
+			if (defined $opt{'V'}) {print STDERR "\t\tIndex $index_number has a hamming of 0, so only exact matches will be considered.\n"};
 		}
 	}
 }
