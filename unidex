@@ -221,9 +221,8 @@ while ($l = <MODES>) {
 			if (defined $opt{'V'}) {
 				print STDERR "INFO: Mode $mode stored components:\n";
 				foreach $class (keys %{$DEX_PARTS{$P[0]}}) {
-					print STDERR "\tClass: $class";
 					foreach $component (keys %{$DEX_PARTS{$P[0]}{$class}}) {
-						print STDERR "\t$component = $DEX_PARTS{$P[0]}{$class}{$component}[0],$DEX_PARTS{$P[0]}{$class}{$component}[1],$DEX_PARTS{$P[0]}{$class}{$component}[2]\n";
+						print STDERR "\t$class\t$component = $DEX_PARTS{$P[0]}{$class}{$component}[0],$DEX_PARTS{$P[0]}{$class}{$component}[1],$DEX_PARTS{$P[0]}{$class}{$component}[2]\n";
 					}
 				}
 			}
@@ -317,6 +316,8 @@ foreach $mode (@MODES_LIST) {
 }
 
 # set up output fastq files
+
+system("mkdir $dex_path/$out_name");
 
 foreach $mode (@MODES_LIST) {
 	foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
