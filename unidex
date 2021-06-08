@@ -178,7 +178,7 @@ while ($l = <MODES>) {
 						if ($part_name =~ /read/i) {
 							$read_number = $part_name; $read_number =~ s/read//i;
 							if (!defined $DEX_PARTS{$P[0]}{'read'}{$read_number}) {
-								$DEX_PARTS{$P[0]}{'read'}{$read_number} = ($i,$pos,$part_length);
+								@{$DEX_PARTS{$P[0]}{'read'}{$read_number}} = ($i,$pos,$part_length);
 								$pos+=$part_length;
 							} else {
 								die "ERROR: Two instances of read - $read_number were specified in the mode configuration for $P[0]!\n";
@@ -197,7 +197,7 @@ while ($l = <MODES>) {
 							if (defined $opt{'V'}) {print STDERR "INFO: mode $mode, index number $index_number hamming distance set to: $INDEX_HAMMING{$P[0]}{'index'}{$index_number}.\n"};
 							if (!defined $DEX_PARTS{$P[0]}{'index'}{$index_number}) {
 								if (defined $opt{'V'}) {print STDERR "INFO: mode $mode, index number $index_number being stored.\n"};
-								$DEX_PARTS{$P[0]}{'index'}{$index_number} = ($i,$pos,$part_length);
+							@{$DEX_PARTS{$P[0]}{'index'}{$index_number}} = ($i,$pos,$part_length);
 								$INDEX_FILES{$P[0]}{'index'}{$index_number} = "null";
 								$pos+=$part_length;
 							} else {
@@ -207,7 +207,7 @@ while ($l = <MODES>) {
 							$pos+=$part_length;
 						} else { # UMI / other component - will add as special field in read name
 							if (!defined $DEX_PARTS{$P[0]}{'other'}{$part_name}) {
-								$DEX_PARTS{$P[0]}{'other'}{$part_name} = ($i,$pos,$part_length);
+								@{$DEX_PARTS{$P[0]}{'other'}{$part_name}} = ($i,$pos,$part_length);
 								$pos+=$part_length;
 							} else {
 								die "ERROR: Two instances of other - $part_name were specified in the mode configuration for $P[0]!\n";
@@ -219,12 +219,12 @@ while ($l = <MODES>) {
 			
 			# report stored components
 			if (defined $opt{'V'}) {
+				print STDERR "INFO: Mode $mode stored components:\n";
 				foreach $class (keys %{$DEX_PARTS{$P[0]}}) {
 					print STDERR "\tClass: $class";
 					foreach $component (keys %{$DEX_PARTS{$P[0]}{$class}}) {
-						print STDERR "\t$component=$DEX_PARTS{$P[0]}{$class}{$component}[0],$DEX_PARTS{$P[0]}{$class}{$component}[1],$DEX_PARTS{$P[0]}{$class}{$component}[2]";
+						print STDERR "\t$component = $DEX_PARTS{$P[0]}{$class}{$component}[0],$DEX_PARTS{$P[0]}{$class}{$component}[1],$DEX_PARTS{$P[0]}{$class}{$component}[2]\n";
 					}
-					print STDERR "\n";
 				}
 			}
 			
