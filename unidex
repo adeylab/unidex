@@ -274,11 +274,11 @@ foreach $mode (@MODES_LIST) {
 			@P = split(/\t/, $l);
 			if (defined $SUBSET{$mode}{$index_number}) {
 				if (defined $SUBSET{$mode}{$index_number}{$P[0]}) {
-					$MODE_IXN_CHECK_true{$mode}{$index_number}{$P[@P-1]} = {$P[@P-1]};
+					$MODE_IXN_CHECK_true{$mode}{$index_number}{$P[-1]} = {$P[-1]};
 					if (defined $opt{'V'}) {print STDERR "\t\tIndex stored as: $MODE_IXN_CHECK_true{$mode}{$index_number}{$P[@P-1]}\n"};
 				}
 			} else {
-				$MODE_IXN_CHECK_true{$mode}{$index_number}{$P[@P-1]} = {$P[@P-1]};
+				$MODE_IXN_CHECK_true{$mode}{$index_number}{$P[-1]} = {$P[-1]};
 				if (defined $opt{'V'}) {print STDERR "\t\tIndex stored as: $MODE_IXN_CHECK_true{$mode}{$index_number}{$P[@P-1]}\n"};
 			}
 		} close IN;
