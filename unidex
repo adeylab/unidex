@@ -262,21 +262,24 @@ foreach $mode (@MODES_LIST) {
 %{$OTHER_BASES{'G'}} = ("C" => "C", "A" => "A", "T" => "T", "N" => "N");
 %{$OTHER_BASES{'T'}} = ("C" => "C", "G" => "G", "A" => "A", "N" => "N");
 
-%MODE_IXN_TRUE_status = (); %MODE_IXN_CHECK_true = ();
+if (defined $opt{'V'}) {print STDERR "INFO: Generating hamming hashes ...\n"};
+
+%MODE_IXN_CHECK_true = ();
 foreach $mode (@MODES_LIST) {
 	foreach $index_number (keys %{$INDEX_FILES{$mode}{'index'}}) {
+		if (defined $opt{'V'}) {print STDERR "\tMode: $mode, Index: $index_number\n"};
 		open IN, "$INDEX_FILES{$mode}{'index'}{$index_number}" || die "ERROR: Cannot open index file: $INDEX_FILES{$mode}{'index'}{$index_number}!\n";
 		while ($l = <IN>) {
 			chomp $l;
 			@P = split(/\t/, $l);
 			if (defined $SUBSET{$mode}{$index_number}) {
 				if (defined $SUBSET{$mode}{$index_number}{$P[0]}) {
-					$MODE_IXN_TRUE_status{$mode}{$index_number}{$P[@P-1]} = "pass";
 					$MODE_IXN_CHECK_true{$mode}{$index_number}{$P[@P-1]} = {$P[@P-1]};
+					if (defined $opt{'V'}) {print STDERR "\t\tIndex stored as: $MODE_IXN_CHECK_true{$mode}{$index_number}{$P[@P-1]}\n"};
 				}
 			} else {
-				$MODE_IXN_TRUE_status{$mode}{$index_number}{$P[@P-1]} = "pass";
 				$MODE_IXN_CHECK_true{$mode}{$index_number}{$P[@P-1]} = {$P[@P-1]};
+				if (defined $opt{'V'}) {print STDERR "\t\tIndex stored as: $MODE_IXN_CHECK_true{$mode}{$index_number}{$P[@P-1]}\n"};
 			}
 		} close IN;
 		
