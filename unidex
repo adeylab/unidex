@@ -368,13 +368,14 @@ while ($in_tag[1] = <R1IN>) {
 			$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'index'}{$index_number}[0]],
 								$DEX_PARTS{$mode}{'index'}{$index_number}[1],
 								$DEX_PARTS{$mode}{'index'}{$index_number}[2]);
-			if (defined $opt{'V'}) {print STDERR "\t\tPulled Index Number $index_number = $pulled_sequence\n"};
+			if (defined $opt{'V'}) {print STDERR "\t\tPulled Index Number $index_number = $pulled_sequence ... "};
 			if (defined $MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}) {
+				if (defined $opt{'V'}) {print STDERR "pass! Corrected index = $MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}\n"};
 				$ix_pass++;
 				$corrected_combined .= "$MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}";
 			} else {
+				if (defined $opt{'V'}) {print STDERR "failed, skipping read for $mode.\n"};
 				$ix_fail++; $index_number = $MODE_ixCT{$mode}+1;
-				if (defined $opt{'V'}) {print STDERR "\t\tPulled Index Number $index_number failed, skipping read for $mode.\n"};
 			}
 		}
 		if ($ix_fail < 1 && $ix_pass == $MODE_ixCT{$mode}) {
