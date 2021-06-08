@@ -299,7 +299,7 @@ foreach $mode (@MODES_LIST) {
 							@NEW = @SEQ;
 							$NEW[$ix_base] = $swap_base;
 							$new = join("", @NEW);
-							if (!defined $HDSEQ_true{$new}) {
+							if (!defined $HDSEQ_true{$new} && !defined $MODE_IXN_CHECK_true{$mode}{$index_number}{$new}) { # do not include if there is a lesser version
 								$HDSEQ_true{$new} = $true;
 							} else {
 								if ($HDSEQ_true{$new} ne $true) {
@@ -312,12 +312,7 @@ foreach $mode (@MODES_LIST) {
 				}
 				# now load to the main hash & check they have not been observed with conflict
 				foreach $seq (keys %HDSEQ_true) {
-					if (!defined $MODE_IXN_CHECK_true{$mode}{$index_number}{$seq}) {
-						$MODE_IXN_CHECK_true{$mode}{$index_number}{$seq} = $HDSEQ_true{$seq};
-					} else {
-						# DO nothing - this is a collision from a greater hamming to a lesser - keep lesser
-						if (defined $opt{'V'}) {print STDERR "\t\t\tTrue = $HDSEQ_true{$seq}, Seq = $seq, Collision with lesser = $MODE_IXN_CHECK_true{$mode}{$index_number}{$seq}, retaining lesser.\n"};
-					}
+					$MODE_IXN_CHECK_true{$mode}{$index_number}{$seq} = $HDSEQ_true{$seq};
 				}
 			}
 		} else {
