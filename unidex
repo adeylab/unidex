@@ -154,22 +154,22 @@ while ($l = <MODES>) {
 		@HEADER = split(/\t/, $l);
 	} else {
 		@P = split(/\t/, $l);
+		$mode = $P[0];
 		if (defined $MODES{$P[0]}) {
-			$mode = $P[0];
 			if (defined $opt{'V'}) {print STDERR "INFO: Mode $P[0] found. Parsing...\n"};
-			$MODES{$P[0]} = 1;
+			$MODES{$mode} = 1;
 			# parse the four reads and store information on components
-			%{$DEX_PARTS{$P[0]}} = ();
-			%{$INDEX_FILES{$P[0]}} = ();
+			%{$DEX_PARTS{$mode}} = ();
+			%{$INDEX_FILES{$mode}} = ();
 			for ($i = 1; $i <= 4; $i++) { # parse the four fastq reads
 				if (defined $opt{'V'}) {print STDERR "INFO: parsing read $i: $P[$i]\n"};
 				if ($P[$i] =~ /unused/i) {
 					if (defined $opt{'V'}) {print STDERR "\t$HEADER[$i] is unused.\n"};
 				} else {
-					if ($i == 1 && $read1_fastq eq "null") {die "ERROR: mode $P[0] requires Read 1 and read 1 fastq could not be detected or was not specified!\n"};
-					if ($i == 2 && $index1_fastq eq "null") {die "ERROR: mode $P[0] requires Index 1 and index 1 fastq could not be detected or was not specified!\n"};
-					if ($i == 3 && $index2_fastq eq "null") {die "ERROR: mode $P[0] requires Index 1 and index 1 fastq could not be detected or was not specified!\n"};
-					if ($i == 4 && $read2_fastq eq "null") {die "ERROR: mode $P[0] requires Read 2 and read 2 fastq could not be detected or was not specified!\n"};
+					if ($i == 1 && $read1_fastq eq "null") {die "ERROR: mode $mode requires Read 1 and read 1 fastq could not be detected or was not specified!\n"};
+					if ($i == 2 && $index1_fastq eq "null") {die "ERROR: mode $mode requires Index 1 and index 1 fastq could not be detected or was not specified!\n"};
+					if ($i == 3 && $index2_fastq eq "null") {die "ERROR: mode $mode requires Index 1 and index 1 fastq could not be detected or was not specified!\n"};
+					if ($i == 4 && $read2_fastq eq "null") {die "ERROR: mode $mode requires Read 2 and read 2 fastq could not be detected or was not specified!\n"};
 					$pos = 0;
 					@READ_PARTS = split(/,/, $P[$i]);
 					for ($part = 0; $part < @READ_PARTS; $part++) {
@@ -177,11 +177,11 @@ while ($l = <MODES>) {
 						if (defined $opt{'V'}) {print STDERR "\tname = $part_name, length = $part_length\n"};
 						if ($part_name =~ /read/i) {
 							$read_number = $part_name; $read_number =~ s/read//i;
-							if (!defined $DEX_PARTS{$P[0]}{'read'}{$read_number}) {
-								@{$DEX_PARTS{$P[0]}{'read'}{$read_number}} = ($i,$pos,$part_length);
+							if (!defined $DEX_PARTS{$mode}{'read'}{$read_number}) {
+								@{$DEX_PARTS{$mode}{'read'}{$read_number}} = ($i,$pos,$part_length);
 								$pos+=$part_length;
 							} else {
-								die "ERROR: Two instances of read - $read_number were specified in the mode configuration for $P[0]!\n";
+								die "ERROR: Two instances of read - $read_number were specified in the mode configuration for $mode!\n";
 							}
 						} elsif ($part_name =~ /index/i) {
 							if ($part_length < 1) {die "ERROR: Index lengths must be specified (ie cannot be '0' for rest of read), issue index: $mode, $part_name\n"};
@@ -190,27 +190,27 @@ while ($l = <MODES>) {
 							if ($index_number =~ /=/) { # HD override found
 								($number,$hd) = split(/=/, $index_number);
 								$index_number = $number;
-								$INDEX_HAMMING{$P[0]}{'index'}{$index_number} = $hd;
+								$INDEX_HAMMING{$mode}{'index'}{$index_number} = $hd;
 							} else {
-								$INDEX_HAMMING{$P[0]}{'index'}{$index_number} = $def_hd;
+								$INDEX_HAMMING{$mode}{'index'}{$index_number} = $def_hd;
 							}
-							if (defined $opt{'V'}) {print STDERR "INFO: mode $mode, index number $index_number hamming distance set to: $INDEX_HAMMING{$P[0]}{'index'}{$index_number}.\n"};
-							if (!defined $DEX_PARTS{$P[0]}{'index'}{$index_number}) {
+							if (defined $opt{'V'}) {print STDERR "INFO: mode $mode, index number $index_number hamming distance set to: $INDEX_HAMMING{$mode}{'index'}{$index_number}.\n"};
+							if (!defined $DEX_PARTS{$mode}{'index'}{$index_number}) {
 								if (defined $opt{'V'}) {print STDERR "INFO: mode $mode, index number $index_number being stored.\n"};
-							@{$DEX_PARTS{$P[0]}{'index'}{$index_number}} = ($i,$pos,$part_length);
-								$INDEX_FILES{$P[0]}{'index'}{$index_number} = "null";
+							@{$DEX_PARTS{$mode}{'index'}{$index_number}} = ($i,$pos,$part_length);
+								$INDEX_FILES{$mode}{'index'}{$index_number} = "null";
 								$pos+=$part_length;
 							} else {
-								die "ERROR: Two instances of index - $index_number were specified in the mode configuration for $P[0]!\n";
+								die "ERROR: Two instances of index - $index_number were specified in the mode configuration for $mode!\n";
 							}
 						} elsif ($part_name =~ /null/i) {
 							$pos+=$part_length;
 						} else { # UMI / other component - will add as special field in read name
-							if (!defined $DEX_PARTS{$P[0]}{'other'}{$part_name}) {
-								@{$DEX_PARTS{$P[0]}{'other'}{$part_name}} = ($i,$pos,$part_length);
+							if (!defined $DEX_PARTS{$mode}{'other'}{$part_name}) {
+								@{$DEX_PARTS{$mode}{'other'}{$part_name}} = ($i,$pos,$part_length);
 								$pos+=$part_length;
 							} else {
-								die "ERROR: Two instances of other - $part_name were specified in the mode configuration for $P[0]!\n";
+								die "ERROR: Two instances of other - $part_name were specified in the mode configuration for $mode!\n";
 							}
 						}
 					}
@@ -359,13 +359,16 @@ while ($in_tag[1] = <R1IN>) {
 	# parse for each mode in order
 	for ($modeID = 0; $modeID < @MODES; $modeID++) {
 		$mode = $MODES[$modeID];
+		
+		if (defined $opt{'V'}) {print STDERR "\tParsing Mode: $mode\n"};
+		
 		$ix_pass = 0; $ix_fail = 0;
 		$corrected_combined = "";
 		for ($index_number = 1; $index_number <= $MODE_ixCT{$mode}; $index_number++) {
 			$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'index'}{$index_number}[0]],
 								$DEX_PARTS{$mode}{'index'}{$index_number}[1],
 								$DEX_PARTS{$mode}{'index'}{$index_number}[2]);
-			if (defined $opt{'V'}) {print STDERR "\tPulled Index Number $index_number = $pulled_sequence\n"};
+			if (defined $opt{'V'}) {print STDERR "\t\tPulled Index Number $index_number = $pulled_sequence\n"};
 			if (defined $MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}) {
 				$ix_pass++;
 				$corrected_combined .= "$MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}";
