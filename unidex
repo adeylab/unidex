@@ -301,18 +301,22 @@ foreach $mode (@MODES_LIST) {
 							$new = join("", @NEW);
 							if (!defined $HDSEQ_true{$new} && !defined $MODE_IXN_CHECK_true{$mode}{$index_number}{$new}) { # do not include if there is a lesser version
 								$HDSEQ_true{$new} = $true;
+							} elsif ($HDSEQ_true{$new} ne $true) {
+								# equal collision
+								if (defined $opt{'V'}) {print STDERR "\t\t\tTrue = $true, HD = $new, Equal HD collision = $HDSEQ_true{$new} - Excluding both.\n"};
+								$HDSEQ_true{$new} = "collision";
 							} else {
-								if ($HDSEQ_true{$new} ne $true) {
-									$HDSEQ_true{$new} = "collision"; # equal HD collision
-									if (defined $opt{'V'}) {print STDERR "\t\t\tTrue = $true, HD = $new, Equal HD collision = $HDSEQ_true{$new}\n"};
-								}
+								# lesser collision
+								if (defined $opt{'V'}) {print STDERR "\t\t\tTrue = $true, HD = $new, Lesser HD collision = $HDSEQ_true{$new} - Excluding new.\n"};
 							}
 						}
 					}
 				}
 				# now load to the main hash & check they have not been observed with conflict
 				foreach $seq (keys %HDSEQ_true) {
-					$MODE_IXN_CHECK_true{$mode}{$index_number}{$seq} = $HDSEQ_true{$seq};
+					if ($HDSEQ_true{$new} !~ /collision/) {
+						$MODE_IXN_CHECK_true{$mode}{$index_number}{$seq} = $HDSEQ_true{$seq};
+					}
 				}
 			}
 		} else {
