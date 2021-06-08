@@ -217,7 +217,7 @@ while ($l = <MODES>) {
 				foreach $class (keys %{$DEX_PARTS{$P[0]}}) {
 					print STDERR "\tClass: $class";
 					foreach $component (keys %{$DEX_PARTS{$P[0]}{$class}}) {
-						print "\t$component=$DEX_PARTS{$P[0]}{$class}[0],$DEX_PARTS{$P[0]}{$class}[1],$DEX_PARTS{$P[0]}{$class}[2]";
+						print "\t$component=$DEX_PARTS{$P[0]}{$class}{$component}[0],$DEX_PARTS{$P[0]}{$class}{$component}[1],$DEX_PARTS{$P[0]}{$class}{$component}[2]";
 					}
 					print STDERR "\n";
 				}
