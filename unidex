@@ -312,9 +312,14 @@ foreach $mode (@MODES_LIST) {
 									# reversion to other sequence but same true
 									if (defined $opt{'V'}) {print STDERR "\t\t\tTrue = $true, HD = $new, matches previous HD sequence with same true.\n"};
 								}
-							} else {
-								# lesser collision - do not add new one
-								if (defined $opt{'V'}) {print STDERR "\t\t\tTrue = $true, HD = $new, Lesser HD collision = $HDSEQ_true{$new} - Excluding new.\n"};
+							} elsif (defined $MODE_IXN_CHECK_true{$mode}{$index_number}{$new}) {
+								if ($MODE_IXN_CHECK_true{$mode}{$index_number}{$new} ne $true) {
+									# lesser collision - do not add new one
+									if (defined $opt{'V'}) {print STDERR "\t\t\tTrue = $true, HD = $new, Lesser HD collision = $HDSEQ_true{$new} - Excluding new.\n"};
+								} else {
+									# reversion
+									if (defined $opt{'V'}) {print STDERR "\t\t\tTrue = $true, HD = $new, matches previous HD sequence with lesser HD with same true.\n"};
+								}
 							}
 						}
 					}
