@@ -360,7 +360,7 @@ while ($in_tag[1] = <R1IN>) {
 	for ($modeID = 0; $modeID < @MODES_LIST; $modeID++) {
 		$mode = $MODES_LIST[$modeID];
 		
-		if (defined $opt{'V'}) {print STDERR "\tParsing Mode: $mode\n"};
+		if (defined $opt{'V'}) {print STDERR "\tParsing Mode: $mode, Index count for mode is $MODE_ixCT{$mode}\n"};
 		
 		$ix_pass = 0; $ix_fail = 0;
 		$corrected_combined = "";
