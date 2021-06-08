@@ -356,11 +356,12 @@ while ($in_tag[1] = <R1IN>) {
 			$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'index'}{$index_number}[0]],
 								$DEX_PARTS{$mode}{'index'}{$index_number}[1],
 								$DEX_PARTS{$mode}{'index'}{$index_number}[2]);
+			if (defined $opt{'V'}) {print STDERR "\tINFO: Pulled Index Number $index_number = $pulled_sequence\n"};
 			if (defined $MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}) {
 				$ix_pass++;
 				$corrected_combined .= "$MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}";
 			} else {
-				$ix_fail = 1;
+				$ix_fail++;
 			}
 		}
 		if ($ix_fail < 1 && $ix_pass == $MODE_ixCT{$mode}) {
