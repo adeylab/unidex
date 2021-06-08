@@ -301,6 +301,7 @@ foreach $mode (@MODES_LIST) {
 							$new = join("", @NEW);
 							if (!defined $HDSEQ_true{$new} && !defined $MODE_IXN_CHECK_true{$mode}{$index_number}{$new}) { # do not include if there is a lesser version
 								$HDSEQ_true{$new} = $true;
+								if (defined $opt{'V'}) {print STDERR "\t\tAdding HD = $new to True = $true.\n"};
 							} elsif ($HDSEQ_true{$new} ne $true) {
 								# equal collision
 								if (defined $opt{'V'}) {print STDERR "\t\t\tTrue = $true, HD = $new, Equal HD collision = $HDSEQ_true{$new} - Excluding both.\n"};
