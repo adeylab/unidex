@@ -6,6 +6,8 @@ $modes_file = "/home/groups/oroaklab/src/unidex/modes.cfg";
 $fastq_path = "/home/groups/oroaklab/fastq";
 $dex_path = "/home/groups/oroaklab/demultiplex";
 $def_hd = 2;
+$gzip = "gzip";
+$zcat = "zcat";
 
 # Description here
 
@@ -21,7 +23,6 @@ Options:
   -R  [STR]   Run Folder (where fastq files are present)
   -M  [LIST]  Mode list - modes must be specified in the modes.cfg file ($modes_file)
               Modes must be comma separated and will demultiplex in specified order listed.
-
 
 Default Options:
   -O  [STR]   Output folder (def = run name, -R)
@@ -39,6 +40,11 @@ Fastq Input (default = auto detect):
   -D  [STR]   Index 2 fastq
   
 Other Options:
+  -S  [STR]   Subset of indexes for a mode.
+                mode1:indexN:(comma separated list of index names);mode2...
+                Index names must be the 1st column of an index file.
+  -g  [STR]   Gzip command (def = $gzip)
+  -z  [STR]   Zcat command (def = $zcat)
   -V          Verbose / debug mode (outputs to STDERR)
 
 
@@ -46,7 +52,7 @@ Other Options:
 
 # load & parse options
 use Getopt::Std; %opt = ();
-getopts("R:M:O:r:o:m:A:B:C:D:d:V", \%opt);
+getopts("R:M:O:r:o:m:A:B:C:D:d:VS:g:", \%opt);
 
 if (!defined $opt{'R'}) {
 	if (defined $opt{'A'} || defined $opt{'B'} || defined $opt{'C'} || defined $opt{'D'}) {
@@ -70,57 +76,75 @@ if (!defined $opt{'O'}) {$opt{'O'} = $opt{'R'}};
 $out_name = $opt{'O'}; $out_name =~ s/\/$//;
 $run_name = $opt{'R'}; $run_name =~ s/\/$//;
 
-
-
-# identify input fastq files
-if (defined $opt{'R'}) {
-	if (!defined $opt{'A'}) {
-		if (-e "$fastq_path/$run_name/Undetermined_S0_L001_R1_001.fastq.gz") {
-			$read1_fastq = "$fastq_path/$run_name/Undetermined_S0_L001_R1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L002_R1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L003_R1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L004_R1_001.fastq.gz";
-		} elsif (-e "$fastq_path/$run_name/Undetermined_S0_R1_001.fastq.gz") {
-			$read1_fastq = "$fastq_path/$run_name/Undetermined_S0_R1_001.fastq.gz";
-		} else {
-			$read1_fastq = "null";
+if (defined $opt{'S'}) {
+	@SUBSETS = split(/;/, $opt{'S'});
+	foreach $subset (@SUBSETS) {
+		($mode,$index_number,$index_list) = split(/:/, $subset);
+		$index_number =~ s/index//i;
+		@INDEX_LIST = split(/,/, $index_list);
+		foreach $index_ID (@INDEX_LIST) {
+			$SUBSETS{$mode}{$index_number}{$index_ID} = 1;
 		}
-	} else {$read1_fastq = "$opt{'A'}"}
-	if (defined $opt{'V'}) {print STDERR "INFO: read 1 fastq = $read1_fastq\n"};
-	
-	if (!defined $opt{'B'}) {
-		if (-e "$fastq_path/$run_name/Undetermined_S0_L001_R2_001.fastq.gz") {
-			$read2_fastq = "$fastq_path/$run_name/Undetermined_S0_L001_R2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L002_R2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L003_R2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L004_R2_001.fastq.gz";
-		} elsif (-e "$fastq_path/$run_name/Undetermined_S0_R2_001.fastq.gz") {
-			$read2_fastq = "$fastq_path/$run_name/Undetermined_S0_R2_001.fastq.gz";
-		} else {
-			$read2_fastq = "null";
-		}
-	} else {$read2_fastq = "$opt{'B'}"}
-	if (defined $opt{'V'}) {print STDERR "INFO: read 2 fastq = $read2_fastq\n"};
-	
-	if (!defined $opt{'C'}) {
-		if (-e "$fastq_path/$run_name/Undetermined_S0_L001_I1_001.fastq.gz") {
-			$index1_fastq = "$fastq_path/$run_name/Undetermined_S0_L001_I1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L002_I1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L003_I1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L004_I1_001.fastq.gz";
-		} elsif (-e "$fastq_path/$run_name/Undetermined_S0_I1_001.fastq.gz") {
-			$index1_fastq = "$fastq_path/$run_name/Undetermined_S0_I1_001.fastq.gz";
-		} else {
-			$index1_fastq = "null";
-		}
-	} else {$index1_fastq = "$opt{'C'}"}
-	if (defined $opt{'V'}) {print STDERR "INFO: index 1 fastq = $index1_fastq\n"};
-
-	if (!defined $opt{'D'}) {
-		if (-e "$fastq_path/$run_name/Undetermined_S0_L001_I2_001.fastq.gz") {
-			$index2_fastq = "$fastq_path/$run_name/Undetermined_S0_L001_I2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L002_I2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L003_I2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L004_I2_001.fastq.gz";
-		} elsif (-e "$fastq_path/$run_name/Undetermined_S0_I2_001.fastq.gz") {
-			$index2_fastq = "$fastq_path/$run_name/Undetermined_S0_I2_001.fastq.gz";
-		} else {
-			$index2_fastq = "null";
-		}
-	} else {$index2_fastq = "$opt{'D'}"}
-	if (defined $opt{'V'}) {print STDERR "INFO: index 2 fastq = $index2_fastq\n"};
+	}
 }
 
+# identify input fastq files
+
+if (!defined $opt{'A'}) {
+	if (-e "$fastq_path/$run_name/Undetermined_S0_L001_R1_001.fastq.gz") {
+		$read1_fastq = "$fastq_path/$run_name/Undetermined_S0_L001_R1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L002_R1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L003_R1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L004_R1_001.fastq.gz";
+		$read_used[1] = "true";
+	} elsif (-e "$fastq_path/$run_name/Undetermined_S0_R1_001.fastq.gz") {
+		$read1_fastq = "$fastq_path/$run_name/Undetermined_S0_R1_001.fastq.gz";
+		$read_used[1] = "true";
+	} else {
+		$read1_fastq = "null"; $read_used[1] = "null";
+	}
+} else {$read1_fastq = "$opt{'A'}"}
+if (defined $opt{'V'}) {print STDERR "INFO: read 1 fastq = $read1_fastq\n"};
+
+if (!defined $opt{'B'}) {
+	if (-e "$fastq_path/$run_name/Undetermined_S0_L001_R2_001.fastq.gz") {
+		$read2_fastq = "$fastq_path/$run_name/Undetermined_S0_L001_R2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L002_R2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L003_R2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L004_R2_001.fastq.gz";
+		$read_used[4] = "true";
+	} elsif (-e "$fastq_path/$run_name/Undetermined_S0_R2_001.fastq.gz") {
+		$read2_fastq = "$fastq_path/$run_name/Undetermined_S0_R2_001.fastq.gz";
+		$read_used[4] = "true";
+	} else {
+		$read2_fastq = "null"; $read_used[4] = "null";
+	}
+} else {$read2_fastq = "$opt{'B'}"}
+if (defined $opt{'V'}) {print STDERR "INFO: read 2 fastq = $read2_fastq\n"};
+
+if (!defined $opt{'C'}) {
+	if (-e "$fastq_path/$run_name/Undetermined_S0_L001_I1_001.fastq.gz") {
+		$index1_fastq = "$fastq_path/$run_name/Undetermined_S0_L001_I1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L002_I1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L003_I1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L004_I1_001.fastq.gz";
+		$read_used[2] = "true";
+	} elsif (-e "$fastq_path/$run_name/Undetermined_S0_I1_001.fastq.gz") {
+		$index1_fastq = "$fastq_path/$run_name/Undetermined_S0_I1_001.fastq.gz";
+		$read_used[2] = "true";
+	} else {
+		$index1_fastq = "null"; $read_used[2] = "null";
+	}
+} else {$index1_fastq = "$opt{'C'}"}
+if (defined $opt{'V'}) {print STDERR "INFO: index 1 fastq = $index1_fastq\n"};
+
+if (!defined $opt{'D'}) {
+	if (-e "$fastq_path/$run_name/Undetermined_S0_L001_I2_001.fastq.gz") {
+		$index2_fastq = "$fastq_path/$run_name/Undetermined_S0_L001_I2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L002_I2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L003_I2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L004_I2_001.fastq.gz";
+		$read_used[3] = "true";
+	} elsif (-e "$fastq_path/$run_name/Undetermined_S0_I2_001.fastq.gz") {
+		$index2_fastq = "$fastq_path/$run_name/Undetermined_S0_I2_001.fastq.gz";
+		$read_used[3] = "true";
+	} else {
+		$index2_fastq = "null"; $read_used[3] = "null";
+	}
+} else {$index2_fastq = "$opt{'D'}"}
+if (defined $opt{'V'}) {print STDERR "INFO: index 2 fastq = $index2_fastq\n"};
+
+
 # load modes
-%DEX_PARTS = ();
+%DEX_PARTS = (); %MODE_ixCT = ();
 open MODES, "$modes_file";
 while ($l = <MODES>) {
 	chomp $l;
@@ -157,7 +181,9 @@ while ($l = <MODES>) {
 								die "ERROR: Two instances of read - $read_number were specified in the mode configuration for $P[0]!\n";
 							}
 						} elsif ($part_name =~ /index/i) {
+							if ($part_length < 1) {die "ERROR: Index lengths must be specified (ie cannot be '0' for rest of read), issue index: $mode, $part_name\n"};
 							$index_number = $part_name; $index_number =~ s/index//i;
+							$MODE_ixCT{$mode}++;
 							if ($index_number =~ /=/) { # HD override found
 								($number,$hd) = split(/=/, $index_number);
 								$index_number = $number;
@@ -223,9 +249,6 @@ foreach $mode (@MODES_LIST) {
 	}
 }
 
-
-# read 1 = 1, index 1 = 2, index 2 = 3, read 2 = 4
-
 # load index files & compute hamming distance
 
 # hash of bases to swap out
@@ -242,8 +265,15 @@ foreach $mode (@MODES_LIST) {
 		while ($l = <IN>) {
 			chomp $l;
 			@P = split(/\t/, $l);
-			$MODE_IXN_TRUE_status{$mode}{$index_number}{$P[@P-1]} = "pass";
-			$MODE_IXN_CHECK_true{$mode}{$index_number}{$P[@P-1]} = {$P[@P-1]};
+			if (defined $SUBSET{$mode}{$index_number}) {
+				if (defined $SUBSET{$mode}{$index_number}{$P[0]}) {
+					$MODE_IXN_TRUE_status{$mode}{$index_number}{$P[@P-1]} = "pass";
+					$MODE_IXN_CHECK_true{$mode}{$index_number}{$P[@P-1]} = {$P[@P-1]};
+				}
+			} else {
+				$MODE_IXN_TRUE_status{$mode}{$index_number}{$P[@P-1]} = "pass";
+				$MODE_IXN_CHECK_true{$mode}{$index_number}{$P[@P-1]} = {$P[@P-1]};
+			}
 		} close IN;
 		
 		# make HD hash
@@ -280,3 +310,130 @@ foreach $mode (@MODES_LIST) {
 		}
 	}
 }
+
+# set up output fastq files
+
+foreach $mode (@MODES_LIST) {
+	foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
+		$handle = "$mode.R$read_number";
+		open $handle, "| $gzip > $dex_path/$out_name/$out_name.$mode.R$read_number.fq.gz";
+	}
+}
+
+# open input fastq files & output fail files
+
+open R1IN, "$zcat $read1_fastq |"; open FAILR1, "| $gzip > $dex_path/$out_name/$out_name.fail.R1.fq.gz"; # read 1 is required
+if ($read2_fastq ne "null") {open R2IN, "$zcat $read2_fastq |"; open FAILR2, "| $gzip > $dex_path/$out_name/$out_name.fail.R2.fq.gz"};
+if ($index1_fastq ne "null") {open I1IN, "$zcat $index1_fastq |"; open FAILI1, "| $gzip > $dex_path/$out_name/$out_name.fail.I1.fq.gz"};
+if ($index2_fastq ne "null") {open I2IN, "$zcat $index2_fastq |"; open FAILI2, "| $gzip > $dex_path/$out_name/$out_name.fail.I2.fq.gz"};
+
+# read 1 = 1, index 1 = 2, index 2 = 3, read 2 = 4
+
+# parse fastq lines in order of listed modes
+%MODE_assigned = (); $total_reads = 0;
+while ($in_tag[1] = <R1IN>) {
+	$total_reads++;
+	# load in read from each file
+	chomp $in_tag[1]; $in_seq[1] = <R1IN>; chomp $in_seq[1]; $null = <R1IN>; $in_qual[1] = <R1IN>; chomp $in_qual[1];
+	if ($read2_fastq ne "null") {$in_tag[4] = <R2IN>; chomp $in_tag[4]; $in_seq[4] = <R2IN>; chomp $in_seq[4]; $null = <R2IN>; $in_qual[4] = <R2IN>; chomp $in_qual[4]};
+	if ($index1_fastq ne "null") {$in_tag[2] = <I1IN>; chomp $in_tag[2]; $in_seq[2] = <I1IN>; chomp $in_seq[2]; $null = <I1IN>; $in_qual[2] = <I1IN>; chomp $in_qual[2]};
+	if ($index2_fastq ne "null") {$in_tag[3] = <I2IN>; chomp $in_tag[3]; $in_seq[3] = <I2IN>; chomp $in_seq[3]; $null = <I2IN>; $in_qual[3] = <I2IN>; chomp $in_qual[3]};
+	
+	$read_passing = 0;
+	
+	# parse for each mode in order
+	for ($modeID = 0; $modeID < @MODES; $modeID++) {
+		$mode = $MODES[$modeID];
+		$ix_pass = 0; $ix_fail = 0;
+		$corrected_combined = "";
+		for ($index_number = 1; $index_number <= $MODE_ixCT{$mode}; $index_number++) {
+			$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'index'}{$index_number}[0]],
+								$DEX_PARTS{$mode}{'index'}{$index_number}[1],
+								$DEX_PARTS{$mode}{'index'}{$index_number}[2]);
+			if (defined $MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}) {
+				$ix_pass++;
+				$corrected_combined .= "$MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}";
+			} else {
+				$ix_fail = 1;
+			}
+		}
+		if ($ix_fail < 1 && $ix_pass == $MODE_ixCT{$mode}) {
+			$read_passing = 1;
+			$MODE_assigned{$mode}++;
+			# start compiling the read name
+			$read_name = "\@$corrected_combined";
+			# pull special fields
+			if (defined $DEX_PARTS{$mode}{'other'}) {
+				foreach $special_field (keys %{$DEX_PARTS{$mode}{'other'}}) {
+					if ($DEX_PARTS{$mode}{'other'}{$special_field}[2] < 1) { # rest of read
+						$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'other'}{$special_field}[0]],
+												  $DEX_PARTS{$mode}{'other'}{$special_field}[1]);
+					} else {
+						$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'other'}{$special_field}[0]],
+												  $DEX_PARTS{$mode}{'other'}{$special_field}[1],
+												  $DEX_PARTS{$mode}{'other'}{$special_field}[2]);
+					}
+					$read_name .= ":$special_field=$pulled_sequence";
+				}
+			}
+			# add origID & number
+			$orig_name = $in_tag[1]; $orig_name =~ s/\#.+$//;
+			$read_name .= ":num=$MODE_assigned{$mode}:tag=$orig_name";
+			
+			# pull reads $ quals then print
+			foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
+				if ($DEX_PARTS{$mode}{'index'}{$index_number}[2] < 1) { # rest of read from start position
+					$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'index'}{$index_number}[0]],
+											  $DEX_PARTS{$mode}{'index'}{$index_number}[1]);
+					$pulled_qual = substr($in_qual[$DEX_PARTS{$mode}{'index'}{$index_number}[0]],
+										  $DEX_PARTS{$mode}{'index'}{$index_number}[1]);
+				} else {
+					$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'index'}{$index_number}[0]],
+											  $DEX_PARTS{$mode}{'index'}{$index_number}[1],
+											  $DEX_PARTS{$mode}{'index'}{$index_number}[2]);
+					$pulled_qual = substr($in_qual[$DEX_PARTS{$mode}{'index'}{$index_number}[0]],
+										  $DEX_PARTS{$mode}{'index'}{$index_number}[1],
+										  $DEX_PARTS{$mode}{'index'}{$index_number}[2]);
+				}
+				$handle = "$mode.R$read_number";
+				print $handle "$read_name#0/$read_number\n$pulled_sequence\n\+\n$pulled_qual\n";
+			}
+		}
+	}
+	
+	# print failed reads
+	if ($read_passing < 1) {
+		$fail++;
+		print FAILR1 "$in_tag[1]\n$in_seq[1]\n\+\n$in_qual[1]\n";
+		if ($read2_fastq ne "null") {print FAILR2 "$in_tag[4]\n$in_seq[4]\n\+\n$in_qual[4]\n"};
+		if ($index1_fastq ne "null") {print FAILI1 "$in_tag[2]\n$in_seq[2]\n\+\n$in_qual[2]\n"};
+		if ($index2_fastq ne "null") {print FAILI2 "$in_tag[3]\n$in_seq[3]\n\+\n$in_qual[3]\n"};
+	} else {
+		$assigned++;
+	}
+}
+
+# close files
+close FAILR1;
+if ($read2_fastq ne "null") {close FAILR2};
+if ($index1_fastq ne "null") {close FAILI1};
+if ($index2_fastq ne "null") {close FAILI2};
+
+foreach $mode (@MODES_LIST) {
+	foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
+		$handle = "$mode.R$read_number";
+		close $handle;
+	}
+}
+
+# print report
+open RPT, ">$dex_path/$out_name/$out_name.unidex.report.txt";
+$pct = sprintf("%.2f", $assigned/$total_reads);
+print RPT "Total Reads = $total_reads\nTotal Assigned = $assigned ($pct)\n";
+foreach $mode (@MODES_LIST) {
+	$pct = sprintf("%.2f", $MODE_assigned{$mode}/$assigned);
+	print RPT "Mode $mode Assgined = $MODE_assigned{$mode} ($pct)\n";
+}
+close RPT;
+
+exit;
