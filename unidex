@@ -483,7 +483,7 @@ $pct = sprintf("%.2f", $assigned/$total_reads);
 print RPT "Total Reads = $total_reads\nTotal Assigned = $assigned ($pct)\n";
 foreach $mode (@MODES_LIST) {
 	$pct = sprintf("%.2f", $MODE_assigned{$mode}/$assigned);
-	print RPT "Mode $mode Assgined = $MODE_assigned{$mode} ($pct)\n";
+	print RPT "Mode $mode Assigned = $MODE_assigned{$mode} ($pct)\n";
 }
 close RPT;
 
