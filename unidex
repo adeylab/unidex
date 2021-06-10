@@ -17,7 +17,7 @@ UNIDEX (Universal Demultiplexer, v0.210607-test1)
 
 Usage:
 
-unidex [options] 
+unidex [options]
 
 Options:
   -R  [STR]   Run Folder (where fastq files are present)
@@ -26,7 +26,7 @@ Options:
 
 Default Options:
   -O  [STR]   Output folder (def = run name, -R)
-  -d  [0,1,2] Hamming distance (max 2, def = $def_hd)
+  -d  [INT]   Hamming distance (def = $def_hd)
 
 Default Locations:
   -r  [PATH]  Fastq folder full path (def = $fastq_path)
@@ -34,12 +34,13 @@ Default Locations:
   -m  [STR]   Mode config file (def = $modes_file)
   
 Fastq Input (default = auto detect):
-  -A  [STR]   Read 1 fastq
-  -B  [STR]   Read 2 fastq
-  -C  [STR]   Index 1 fastq
-  -D  [STR]   Index 2 fastq
+  -1  [STR]   Read 1 fastq
+  -2  [STR]   Index 1 fastq
+  -3  [STR]   Index 2 fastq
+  -4  [STR]   Read 2 fastq
   
 Other Options:
+  -a  [STR]   Annotation file(s), comma separated
   -S  [STR]   Subset of indexes for a mode.
                 mode1:indexN:(comma separated list of index names);mode2...
                 Index names must be the 1st column of an index file.
@@ -47,15 +48,14 @@ Other Options:
   -z  [STR]   Zcat command (def = $zcat)
   -V          Verbose / debug mode (outputs to STDERR)
 
-
 ";
 
 # load & parse options
 use Getopt::Std; %opt = ();
-getopts("R:M:O:r:o:m:A:B:C:D:d:VS:g:", \%opt);
+getopts("R:M:O:r:o:m:1:2:3:4:d:VS:g:", \%opt);
 
 if (!defined $opt{'R'}) {
-	if (defined $opt{'A'} || defined $opt{'B'} || defined $opt{'C'} || defined $opt{'D'}) {
+	if (defined $opt{'1'} || defined $opt{'4'} || defined $opt{'2'} || defined $opt{'3'}) {
 		if (!defined $opt{'O'}) {
 			die "ERROR: When not supplying -R and instead specifying individual fastq files, an output name must be provided (-O).";
 		}
@@ -90,7 +90,7 @@ if (defined $opt{'S'}) {
 
 # identify input fastq files
 
-if (!defined $opt{'A'}) {
+if (!defined $opt{'1'}) {
 	if (-e "$fastq_path/$run_name/Undetermined_S0_L001_R1_001.fastq.gz") {
 		$read1_fastq = "$fastq_path/$run_name/Undetermined_S0_L001_R1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L002_R1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L003_R1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L004_R1_001.fastq.gz";
 		$read_used[1] = "true";
@@ -100,10 +100,10 @@ if (!defined $opt{'A'}) {
 	} else {
 		$read1_fastq = "null"; $read_used[1] = "null";
 	}
-} else {$read1_fastq = "$opt{'A'}"}
+} else {$read1_fastq = "$opt{'1'}"}
 if (defined $opt{'V'}) {print STDERR "INFO: read 1 fastq = $read1_fastq\n"};
 
-if (!defined $opt{'B'}) {
+if (!defined $opt{'4'}) {
 	if (-e "$fastq_path/$run_name/Undetermined_S0_L001_R2_001.fastq.gz") {
 		$read2_fastq = "$fastq_path/$run_name/Undetermined_S0_L001_R2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L002_R2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L003_R2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L004_R2_001.fastq.gz";
 		$read_used[4] = "true";
@@ -113,10 +113,10 @@ if (!defined $opt{'B'}) {
 	} else {
 		$read2_fastq = "null"; $read_used[4] = "null";
 	}
-} else {$read2_fastq = "$opt{'B'}"}
+} else {$read2_fastq = "$opt{'4'}"}
 if (defined $opt{'V'}) {print STDERR "INFO: read 2 fastq = $read2_fastq\n"};
 
-if (!defined $opt{'C'}) {
+if (!defined $opt{'2'}) {
 	if (-e "$fastq_path/$run_name/Undetermined_S0_L001_I1_001.fastq.gz") {
 		$index1_fastq = "$fastq_path/$run_name/Undetermined_S0_L001_I1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L002_I1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L003_I1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L004_I1_001.fastq.gz";
 		$read_used[2] = "true";
@@ -126,10 +126,10 @@ if (!defined $opt{'C'}) {
 	} else {
 		$index1_fastq = "null"; $read_used[2] = "null";
 	}
-} else {$index1_fastq = "$opt{'C'}"}
+} else {$index1_fastq = "$opt{'2'}"}
 if (defined $opt{'V'}) {print STDERR "INFO: index 1 fastq = $index1_fastq\n"};
 
-if (!defined $opt{'D'}) {
+if (!defined $opt{'3'}) {
 	if (-e "$fastq_path/$run_name/Undetermined_S0_L001_I2_001.fastq.gz") {
 		$index2_fastq = "$fastq_path/$run_name/Undetermined_S0_L001_I2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L002_I2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L003_I2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L004_I2_001.fastq.gz";
 		$read_used[3] = "true";
@@ -139,7 +139,7 @@ if (!defined $opt{'D'}) {
 	} else {
 		$index2_fastq = "null"; $read_used[3] = "null";
 	}
-} else {$index2_fastq = "$opt{'D'}"}
+} else {$index2_fastq = "$opt{'3'}"}
 if (defined $opt{'V'}) {print STDERR "INFO: index 2 fastq = $index2_fastq\n"};
 
 
@@ -273,12 +273,13 @@ foreach $mode (@MODES_LIST) {
 		while ($l = <IN>) {
 			chomp $l;
 			@P = split(/\t/, $l);
+			$seq = uc($P[-1]);
 			if (defined $SUBSET{$mode}{$index_number}) {
 				if (defined $SUBSET{$mode}{$index_number}{$P[0]}) {
-					$MODE_IXN_CHECK_true{$mode}{$index_number}{$P[-1]} = $P[-1];
+					$MODE_IXN_CHECK_true{$mode}{$index_number}{$seq} = $seq;
 				}
 			} else {
-				$MODE_IXN_CHECK_true{$mode}{$index_number}{$P[-1]} = $P[-1];
+				$MODE_IXN_CHECK_true{$mode}{$index_number}{$seq} = $seq;
 			}
 		} close IN;
 		
