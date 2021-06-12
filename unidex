@@ -2,7 +2,7 @@
 
 # Defaults here (currently hardcoded, move to config file later)
 
-$modes_file = "/home/groups/oroaklab/src/unidex/modes.cfg";
+$modes_file = "/home/groups/oroaklab/demultiplex/unidex_modes.cfg";
 $fastq_path = "/home/groups/oroaklab/fastq";
 $dex_path = "/home/groups/oroaklab/demultiplex";
 $def_hd = 2;
@@ -40,10 +40,10 @@ Fastq Input (default = auto detect):
   -4  [STR]   Read 2 fastq
   
 Other Options:
-  -a  [STR]   Annotation file(s), comma separated
-  -S  [STR]   Subset of indexes for a mode.
-                mode1:indexN:(comma separated list of index names);mode2...
-                Index names must be the 1st column of an index file.
+  -A  [STR]   Annotation file(s), comma separated with mode specified
+              If only one mode is specified, then it will default to that mode
+              [mode1]=[annot_file1],[mode2]=[annot_file2],etc... OR
+			  First column of annot file designates mode for thast annot
   -g  [STR]   Gzip command (def = $gzip)
   -z  [STR]   Zcat command (def = $zcat)
   -V          Verbose / debug mode (outputs to STDERR)
@@ -52,7 +52,7 @@ Other Options:
 
 # load & parse options
 use Getopt::Std; %opt = ();
-getopts("R:M:O:r:o:m:1:2:3:4:d:VS:g:", \%opt);
+getopts("R:M:O:r:o:m:1:2:3:4:D:VS:g:A:", \%opt);
 
 if (!defined $opt{'R'}) {
 	if (defined $opt{'1'} || defined $opt{'4'} || defined $opt{'2'} || defined $opt{'3'}) {
@@ -73,17 +73,58 @@ if (defined $opt{'r'}) {$fastq_path = $opt{'r'}}; $fastq_path =~ s/\/$//;
 if (defined $opt{'o'}) {$dex_path = $opt{'o'}}; $dex_path =~ s/\/$//;
 if (defined $opt{'m'}) {$modes_file = $opt{'m'}};
 if (!defined $opt{'O'}) {$opt{'O'} = $opt{'R'}};
+if (defined $opt{'D'}) {$def_hd = $opt{'D'}};
 $out_name = $opt{'O'}; $out_name =~ s/\/$//;
 $run_name = $opt{'R'}; $run_name =~ s/\/$//;
 
-if (defined $opt{'S'}) {
-	@SUBSETS = split(/;/, $opt{'S'});
-	foreach $subset (@SUBSETS) {
-		($mode,$index_number,$index_list) = split(/:/, $subset);
-		$index_number =~ s/index//i;
-		@INDEX_LIST = split(/,/, $index_list);
-		foreach $index_ID (@INDEX_LIST) {
-			$SUBSETS{$mode}{$index_number}{$index_ID} = 1;
+# annotation loading
+if (defined $opt{'A'}) {
+	@ANNOT_FILES = split(/,/, $opt{'A'});
+	foreach $annot_file (@ANNOT_FILES) {
+		$annot_mode = "null";
+		if (scalar @MODES_LIST < 2) {
+			$annot_mode = $MODES_LIST[0];
+		}
+		if ($annot_file =~ /=/) { # mode specified in command line
+			($annot_mode,$file) = split(/=/, $annot_file);
+			$annot_file = $file;
+			open IN, $annot_file;
+		} else {
+			open IN, $annot_file;
+		}
+		while ($l = <IN>) {
+			chomp $l;
+			@P = split(/\t/, $l);
+			if (scalar @P == 3) { # mode specified in annot file
+				($annot_mode,$cellID,$annot) = split(/\t/, $l);
+			} else { 
+				($cellID,$annot) = split(/\t/, $l);
+			}
+			if ($annot_mode eq "null") {
+				die "\nERROR: Annot file $annot_file does not have a mode specified for one or more lines or the file as a whole (required if multiple modes are being demultiplexed).\n";
+			}
+			if (!defined $MODE_ANNOT{$annot_mode}) {
+				%{$MODE_ANNOT{$annot_mode}} = ();
+				%{$MODE_CELLID_annot{$annot_mode}} = ();
+				%{$MODE_ANNOT_assigned{$annot_mode}} = ();
+			}
+			if (!defined $MODE_ANNOT{$annot_mode}{$annot}) {
+				$MODE_ANNOT{$annot_mode}{$annot} = 1;
+				$MODE_ANNOT_assigned{$annot_mode}{$annot} = 0;
+			}
+			
+			$MODE_ANNOT{$annot_mode}{$annot}{'lines'}++;
+			
+			if ($cellID =~ /-|\*/) { # wildcards
+				
+				######## ID which index and then later fill in with each possible
+				
+				$cellID =~ s/-+/-/;
+				# parse to know which index numbers
+				
+			} else {
+				$MODE_CELLID_annot{$annot_mode}{$cellID} = $annot;
+			}
 		}
 	}
 }
@@ -332,17 +373,6 @@ foreach $mode (@MODES_LIST) {
 		} else {
 			if (defined $opt{'V'}) {print STDERR "\t\tIndex $index_number has a hamming of 0, so only exact matches will be considered.\n"};
 		}
-		
-		#if (defined $opt{'V'}) {
-		#	%TRUE_count = ();
-		#	foreach $seq (keys %{$MODE_IXN_CHECK_true{$mode}{$index_number}}) {
-		#		$TRUE_count{$MODE_IXN_CHECK_true{$mode}{$index_number}{$seq}}++;
-		#	}
-		#	print STDERR "INFO: Mode: $mode, Index: $index_number, True sequences and HD assigned:\n";
-		#	foreach $true (sort {$b<=>$a} keys %TRUE_count) {
-		#		print STDERR "\t$true\t$TRUE_count{$true}\n";
-		#	}
-		#}
 	}
 }
 
@@ -351,9 +381,22 @@ foreach $mode (@MODES_LIST) {
 system("mkdir $dex_path/$out_name");
 
 foreach $mode (@MODES_LIST) {
-	foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
-		$handle = "$mode.R$read_number";
-		open $handle, "| $gzip > $dex_path/$out_name/$out_name.$mode.R$read_number.fq.gz";
+	if (defined $MODE_ANNOT{$mode}) {
+		foreach $annot (keys %{$MODE_ANNOT{$mode}}) {
+			foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
+				$handle = "$mode.$annot.R$read_number";
+				open $handle, "| $gzip > $dex_path/$out_name/$out_name.$mode.$annot.R$read_number.fq.gz";
+			}
+		}
+		foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
+			$handle = "$mode.unassigned.R$read_number";
+			open $handle, "| $gzip > $dex_path/$out_name/$out_name.$mode.unassigned.R$read_number.fq.gz";
+		}
+	} else {
+		foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
+			$handle = "$mode.R$read_number";
+			open $handle, "| $gzip > $dex_path/$out_name/$out_name.$mode.R$read_number.fq.gz";
+		}
 	}
 }
 
@@ -429,7 +472,7 @@ while ($in_tag[1] = <R1IN>) {
 				}
 			}
 			# add origID & number
-			$orig_name = $in_tag[1]; $orig_name =~ s/\s.+$//; $orig_name =~ s/\#.+$//;
+			$orig_name = $in_tag[1]; $orig_name =~ s/\s.+$//; $orig_name =~ s/\#.+$//; $orig_name =~ s/^\@//;
 			$read_name .= ":num=$MODE_assigned{$mode}:tag=$orig_name";
 			
 			# pull reads $ quals then print
@@ -447,7 +490,19 @@ while ($in_tag[1] = <R1IN>) {
 										  $DEX_PARTS{$mode}{'read'}{$read_number}[1],
 										  $DEX_PARTS{$mode}{'read'}{$read_number}[2]);
 				}
-				$handle = "$mode.R$read_number";
+				
+				if (defined $MODE_ANNOT{$mode}) {
+					if (defined $MODE_CELLID_annot{$mode}{$corrected_combined}) {
+						$annot = $MODE_CELLID_annot{$mode}{$corrected_combined};
+						$MODE_ANNOT_assigned{$mode}{$annot}++;
+						$handle = "$mode.$annot.R$read_number";
+					} else {
+						$handle = "$mode.unassigned.R$read_number";
+						$MODE_unassigned{$mode}++;
+					}
+				} else {
+					$handle = "$mode.R$read_number";
+				}
 				print $handle "$read_name#0/$read_number\n$pulled_sequence\n\+\n$pulled_qual\n";
 			}
 		}
@@ -472,9 +527,22 @@ if ($index1_fastq ne "null") {close FAILI1};
 if ($index2_fastq ne "null") {close FAILI2};
 
 foreach $mode (@MODES_LIST) {
-	foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
-		$handle = "$mode.R$read_number";
-		close $handle;
+	if (defined $MODE_ANNOT{$mode}) {
+		foreach $annot (keys %{$MODE_ANNOT{$mode}}) {
+			foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
+				$handle = "$mode.$annot.R$read_number";
+				close $handle;
+			}
+		}
+		foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
+			$handle = "$mode.unassigned.R$read_number";
+			close $handle;
+		}
+	} else {
+		foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
+			$handle = "$mode.R$read_number";
+			close $handle;
+		}
 	}
 }
 
@@ -483,8 +551,15 @@ open RPT, ">$dex_path/$out_name/$out_name.unidex.report.txt";
 $pct = sprintf("%.2f", $assigned/$total_reads);
 print RPT "Total Reads = $total_reads\nTotal Assigned = $assigned ($pct)\n";
 foreach $mode (@MODES_LIST) {
-	$pct = sprintf("%.2f", $MODE_assigned{$mode}/$assigned);
+	$pct = sprintf("%.2f", ($MODE_assigned{$mode}/$assigned)*100);
 	print RPT "Mode $mode Assigned = $MODE_assigned{$mode} ($pct)\n";
+	if (defined $MODE_ANNOT{$mode}) {
+		foreach $annot (keys %{$MODE_ANNOT{$mode}}) {
+			$pct_all = sprintf("%.2f", ($MODE_ANNOT_assigned{$mode}{$annot}/$assigned)*100);
+			$pct_mode = sprintf("%.2f", ($MODE_ANNOT_assigned{$mode}{$annot}/$MODE_assigned{$mode})*100);
+			print RPT "\tAnnot $annot Assigned = $MODE_ANNOT_assigned{$mode} ($pct_all of All, $pct_mode of $mode)\n";
+		}
+	}
 }
 close RPT;
 
