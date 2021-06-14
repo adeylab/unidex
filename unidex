@@ -125,7 +125,7 @@ if (defined $opt{'A'}) {
 				@{$MODE_CELLID_WILDCARDS{$annot_mode}{$cellID}} = ();
 				@ID_BASES = split(//, $cellID);
 				for ($IDpos = 0; $IDpos < @ID_BASES; $IDpos++) {
-					if ($ID_BASES[$IDpos] =~ /-|N/) {
+					if ($ID_BASES[$IDpos] =~ /-|N/) { # store each wildcard position
 						push @{$MODE_CELLID_WILDCARDS{$annot_mode}{$cellID}}, $IDpos;
 					}
 				}
