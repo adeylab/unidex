@@ -527,6 +527,7 @@ while ($in_tag[1] = <R1IN>) {
 								}
 							}
 						}
+						$MODE_CELLID_annot{$mode}{$corrected_combined} = $annot; # store it to annotation 'file' so it doesn't have to be re-checked later.
 					}
 				}
 				
@@ -613,7 +614,20 @@ foreach $mode (@MODES_LIST) {
 			print RPT "\tAnnot $annot Assigned = $MODE_ANNOT_assigned{$mode}{$annot} ($pct_all of All, $pct_mode of $mode)\n";
 		}
 	}
+	
+	# if wildcards were used, print an annot with the expanded set of observed indexes that met the wildcard
+	if (defined $MODE_CELLID_WILDCARDS{$mode}) {
+		open ANNOT, ">$dex_path/$out_name/$out_name.observed.annot";
+		foreach $cellID (keys %{$MODE_CELLID_annot{$mode}}) {
+			if ($cellID !~ /-|N/) {
+				print ANNOT "$cellID\t$annot\n";
+			}
+		}
+		close ANNOT;
+	}
 }
 close RPT;
+
+
 
 exit;
