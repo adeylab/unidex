@@ -324,9 +324,6 @@ foreach $mode (@MODES_LIST) {
 			@P = split(/\t/, $l);
 			$seq = uc($P[-1]);
 			$MODE_IXN_CHECK_true{$mode}{$index_number}{$seq} = $seq;
-			if (defined $MODE_CELLID_WILDCARDS{$mode}) { # to make wildcards
-				$MODE_IXN_TRUE{$mode}{$index_number}{$seq} = $seq;
-			}
 		} close IN;
 		
 		# make HD hash
@@ -377,31 +374,6 @@ foreach $mode (@MODES_LIST) {
 			}
 		} else {
 			if (defined $opt{'V'}) {print STDERR "\t\tIndex $index_number has a hamming of 0, so only exact matches will be considered.\n"};
-		}
-	}
-}
-
-# if wildcards are present - generate wildcard annotations
-foreach $mode (@MODES_LIST) {
-	if (defined $MODE_CELLID_WILDCARDS{$mode}) {
-		foreach $wildcard_pattern (keys %{$MODE_CELLID_WILDCARDS{$mode}) {
-
-			# get coords
-			$pos = 0;
-			for ($index_number = 1; $index_number <= $MODE_ixCT{$mode}; $index_number++) {
-				$seq = (%{$MODE_INDEX_start{$mode}{$index_number}})[0];
-				@SEQ = split(//, $seq);
-				for ($seq_pos = 0; $seq_pos < @SEQ; $seq_pos++) {
-					if (defined $MODE_CELLID_WILDCARDS{$mode}{$wildcard_pattern}{$pos}) { # is wildcard position
-						
-					}
-					$pos++;
-				}
-				
-				
-			}
-			
-			# convert wildcard bases and see if it matches an annot and store that new annot matches
 		}
 	}
 }
