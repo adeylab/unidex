@@ -26,7 +26,7 @@ Options:
 
 Default Options:
   -O  [STR]   Output folder (def = run name, -R)
-  -d  [INT]   Hamming distance (def = $def_hd)
+  -d  [INT]   Max allowed hamming distance (def = $def_hd)
 
 Default Locations:
   -r  [PATH]  Fastq folder full path (def = $fastq_path)
@@ -44,6 +44,7 @@ Other Options:
               If only one mode is specified, then it will default to that mode
               [mode1]=[annot_file1],[mode2]=[annot_file2],etc... OR
 			  First column of annot file designates mode for thast annot
+  -u          Only report a read to the first mode that it matches (def = all)
   -g  [STR]   Gzip command (def = $gzip)
   -z  [STR]   Zcat command (def = $zcat)
   -V          Verbose / debug mode (outputs to STDERR)
@@ -52,7 +53,7 @@ Other Options:
 
 # load & parse options
 use Getopt::Std; %opt = ();
-getopts("R:M:O:r:o:m:1:2:3:4:D:VS:g:A:", \%opt);
+getopts("R:M:O:r:o:m:1:2:3:4:D:VS:g:A:u", \%opt);
 
 if (!defined $opt{'R'}) {
 	if (defined $opt{'1'} || defined $opt{'4'} || defined $opt{'2'} || defined $opt{'3'}) {
@@ -322,12 +323,9 @@ foreach $mode (@MODES_LIST) {
 			chomp $l;
 			@P = split(/\t/, $l);
 			$seq = uc($P[-1]);
-			if (defined $SUBSET{$mode}{$index_number}) {
-				if (defined $SUBSET{$mode}{$index_number}{$P[0]}) {
-					$MODE_IXN_CHECK_true{$mode}{$index_number}{$seq} = $seq;
-				}
-			} else {
-				$MODE_IXN_CHECK_true{$mode}{$index_number}{$seq} = $seq;
+			$MODE_IXN_CHECK_true{$mode}{$index_number}{$seq} = $seq;
+			if (defined $MODE_CELLID_WILDCARDS{$mode}) { # to make wildcards
+				$MODE_IXN_TRUE{$mode}{$index_number}{$seq} = $seq;
 			}
 		} close IN;
 		
@@ -386,8 +384,24 @@ foreach $mode (@MODES_LIST) {
 # if wildcards are present - generate wildcard annotations
 foreach $mode (@MODES_LIST) {
 	if (defined $MODE_CELLID_WILDCARDS{$mode}) {
-		for ($index_number = 1; $index_number <= $MODE_ixCT{$mode}; $index_number++) {
+		foreach $wildcard_pattern (keys %{$MODE_CELLID_WILDCARDS{$mode}) {
+
+			# get coords
+			$pos = 0;
+			for ($index_number = 1; $index_number <= $MODE_ixCT{$mode}; $index_number++) {
+				$seq = (%{$MODE_INDEX_start{$mode}{$index_number}})[0];
+				@SEQ = split(//, $seq);
+				for ($seq_pos = 0; $seq_pos < @SEQ; $seq_pos++) {
+					if (defined $MODE_CELLID_WILDCARDS{$mode}{$wildcard_pattern}{$pos}) { # is wildcard position
+						
+					}
+					$pos++;
+				}
+				
+				
+			}
 			
+			# convert wildcard bases and see if it matches an annot and store that new annot matches
 		}
 	}
 }
@@ -448,87 +462,91 @@ while ($in_tag[1] = <R1IN>) {
 	
 	# parse for each mode in order
 	for ($modeID = 0; $modeID < @MODES_LIST; $modeID++) {
-		$mode = $MODES_LIST[$modeID];
 		
-		if (defined $opt{'V'}) {print STDERR "\tParsing Mode: $mode, Index count for mode is $MODE_ixCT{$mode}\n"};
+		if (!defined $opt{'u'} || $read_passing < 1) { # only report to first matching if u is specified
 		
-		$ix_pass = 0; $ix_fail = 0;
-		$corrected_combined = "";
-		for ($index_number = 1; $index_number <= $MODE_ixCT{$mode}; $index_number++) {
-			$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'index'}{$index_number}[0]],
-								$DEX_PARTS{$mode}{'index'}{$index_number}[1],
-								$DEX_PARTS{$mode}{'index'}{$index_number}[2]);
-			if (defined $opt{'V'}) {print STDERR "\t\tPulled Index Number $index_number = $pulled_sequence ... "};
-			if (defined $MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}) {
-				if (defined $opt{'V'}) {print STDERR "pass! Corrected index = $MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}\n"};
-				$ix_pass++;
-				$corrected_combined .= "$MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}";
-			} else {
-				if (defined $opt{'V'}) {print STDERR "failed, skipping read for $mode.\n"};
-				$ix_fail++; $index_number = $MODE_ixCT{$mode}+1;
-			}
-		}
-		if ($ix_fail < 1 && $ix_pass == $MODE_ixCT{$mode}) {
-			$read_passing = 1;
-			$MODE_assigned{$mode}++;
-			# start compiling the read name
-			$read_name = "\@$corrected_combined";
-			# pull special fields
-			if (defined $DEX_PARTS{$mode}{'other'}) {
-				foreach $special_field (keys %{$DEX_PARTS{$mode}{'other'}}) {
-					if ($DEX_PARTS{$mode}{'other'}{$special_field}[2] < 1) { # rest of read
-						$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'other'}{$special_field}[0]],
-												  $DEX_PARTS{$mode}{'other'}{$special_field}[1]);
-					} else {
-						$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'other'}{$special_field}[0]],
-												  $DEX_PARTS{$mode}{'other'}{$special_field}[1],
-												  $DEX_PARTS{$mode}{'other'}{$special_field}[2]);
-					}
-					$read_name .= ":$special_field=$pulled_sequence";
+			$mode = $MODES_LIST[$modeID];
+			
+			if (defined $opt{'V'}) {print STDERR "\tParsing Mode: $mode, Index count for mode is $MODE_ixCT{$mode}\n"};
+			
+			$ix_pass = 0; $ix_fail = 0;
+			$corrected_combined = "";
+			for ($index_number = 1; $index_number <= $MODE_ixCT{$mode}; $index_number++) {
+				$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'index'}{$index_number}[0]],
+									$DEX_PARTS{$mode}{'index'}{$index_number}[1],
+									$DEX_PARTS{$mode}{'index'}{$index_number}[2]);
+				if (defined $opt{'V'}) {print STDERR "\t\tPulled Index Number $index_number = $pulled_sequence ... "};
+				if (defined $MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}) {
+					if (defined $opt{'V'}) {print STDERR "pass! Corrected index = $MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}\n"};
+					$ix_pass++;
+					$corrected_combined .= "$MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}";
+				} else {
+					if (defined $opt{'V'}) {print STDERR "failed, skipping read for $mode.\n"};
+					$ix_fail++; $index_number = $MODE_ixCT{$mode}+1;
 				}
 			}
-			# add origID & number
-			$orig_name = $in_tag[1]; $orig_name =~ s/\s.+$//; $orig_name =~ s/\#.+$//; $orig_name =~ s/^\@//;
-			$read_name .= ":num=$MODE_assigned{$mode}:tag=$orig_name";
-			
-			# pull reads $ quals then print
-			foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
-				if ($DEX_PARTS{$mode}{'read'}{$read_number}[2] < 1) { # rest of read from start position
-					$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'read'}{$read_number}[0]],
+			if ($ix_fail < 1 && $ix_pass == $MODE_ixCT{$mode}) {
+				$read_passing = 1;
+				$MODE_assigned{$mode}++;
+				# start compiling the read name
+				$read_name = "\@$corrected_combined";
+				# pull special fields
+				if (defined $DEX_PARTS{$mode}{'other'}) {
+					foreach $special_field (keys %{$DEX_PARTS{$mode}{'other'}}) {
+						if ($DEX_PARTS{$mode}{'other'}{$special_field}[2] < 1) { # rest of read
+							$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'other'}{$special_field}[0]],
+													  $DEX_PARTS{$mode}{'other'}{$special_field}[1]);
+						} else {
+							$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'other'}{$special_field}[0]],
+													  $DEX_PARTS{$mode}{'other'}{$special_field}[1],
+													  $DEX_PARTS{$mode}{'other'}{$special_field}[2]);
+						}
+						$read_name .= ":$special_field=$pulled_sequence";
+					}
+				}
+				# add origID & number
+				$orig_name = $in_tag[1]; $orig_name =~ s/\s.+$//; $orig_name =~ s/\#.+$//; $orig_name =~ s/^\@//;
+				$read_name .= ":num=$MODE_assigned{$mode}:tag=$orig_name";
+				
+				# pull reads $ quals then print
+				foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
+					if ($DEX_PARTS{$mode}{'read'}{$read_number}[2] < 1) { # rest of read from start position
+						$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'read'}{$read_number}[0]],
+												  $DEX_PARTS{$mode}{'read'}{$read_number}[1]);
+						$pulled_qual = substr($in_qual[$DEX_PARTS{$mode}{'read'}{$read_number}[0]],
 											  $DEX_PARTS{$mode}{'read'}{$read_number}[1]);
-					$pulled_qual = substr($in_qual[$DEX_PARTS{$mode}{'read'}{$read_number}[0]],
-										  $DEX_PARTS{$mode}{'read'}{$read_number}[1]);
-				} else {
-					$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'read'}{$read_number}[0]],
+					} else {
+						$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'read'}{$read_number}[0]],
+												  $DEX_PARTS{$mode}{'read'}{$read_number}[1],
+												  $DEX_PARTS{$mode}{'read'}{$read_number}[2]);
+						$pulled_qual = substr($in_qual[$DEX_PARTS{$mode}{'read'}{$read_number}[0]],
 											  $DEX_PARTS{$mode}{'read'}{$read_number}[1],
 											  $DEX_PARTS{$mode}{'read'}{$read_number}[2]);
-					$pulled_qual = substr($in_qual[$DEX_PARTS{$mode}{'read'}{$read_number}[0]],
-										  $DEX_PARTS{$mode}{'read'}{$read_number}[1],
-										  $DEX_PARTS{$mode}{'read'}{$read_number}[2]);
-				}
-				
-				if (defined $MODE_ANNOT{$mode}) {
-					if (defined $MODE_CELLID_annot{$mode}{$corrected_combined}) { # straight annot
-						$annot = $MODE_CELLID_annot{$mode}{$corrected_combined};
-						$MODE_ANNOT_assigned{$mode}{$annot}++;
-						$handle = "$mode.$annot.R$read_number";
-					} elsif (defined $MODE_CELLID_WILDCARDS{$mode}) { # wildcard annot
-						$annot = "null";
-						@ID_BASES = split(//, $corrected_combined);
-						foreach $cellID (keys %{$MODE_CELLID_WILDCARDS{$mode}}) { # check annots with wildcards
-							if ($annot eq "null") {
-								@CHECK = @ID_BASES;
-								
-							}
-						}
-					} else { # not in an annot
-						$handle = "$mode.unassigned.R$read_number";
-						$MODE_unassigned{$mode}++;
 					}
-				} else {
-					$handle = "$mode.R$read_number";
+					
+					if (defined $MODE_ANNOT{$mode}) {
+						if (defined $MODE_CELLID_annot{$mode}{$corrected_combined}) { # straight annot
+							$annot = $MODE_CELLID_annot{$mode}{$corrected_combined};
+							$MODE_ANNOT_assigned{$mode}{$annot}++;
+							$handle = "$mode.$annot.R$read_number";
+						} elsif (defined $MODE_CELLID_WILDCARDS{$mode}) { # wildcard annot
+							$annot = "null";
+							@ID_BASES = split(//, $corrected_combined);
+							foreach $cellID (keys %{$MODE_CELLID_WILDCARDS{$mode}}) { # check annots with wildcards
+								if ($annot eq "null") {
+									@CHECK = @ID_BASES;
+									
+								}
+							}
+						} else { # not in an annot
+							$handle = "$mode.unassigned.R$read_number";
+							$MODE_unassigned{$mode}++;
+						}
+					} else {
+						$handle = "$mode.R$read_number";
+					}
+					print $handle "$read_name#0/$read_number\n$pulled_sequence\n\+\n$pulled_qual\n";
 				}
-				print $handle "$read_name#0/$read_number\n$pulled_sequence\n\+\n$pulled_qual\n";
 			}
 		}
 	}
@@ -582,7 +600,7 @@ foreach $mode (@MODES_LIST) {
 		foreach $annot (keys %{$MODE_ANNOT{$mode}}) {
 			$pct_all = sprintf("%.2f", ($MODE_ANNOT_assigned{$mode}{$annot}/$assigned)*100);
 			$pct_mode = sprintf("%.2f", ($MODE_ANNOT_assigned{$mode}{$annot}/$MODE_assigned{$mode})*100);
-			print RPT "\tAnnot $annot Assigned = $MODE_ANNOT_assigned{$mode} ($pct_all of All, $pct_mode of $mode)\n";
+			print RPT "\tAnnot $annot Assigned = $MODE_ANNOT_assigned{$mode}{$annot} ($pct_all of All, $pct_mode of $mode)\n";
 		}
 	}
 }
