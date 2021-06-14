@@ -508,6 +508,28 @@ while ($in_tag[1] = <R1IN>) {
 				$orig_name = $in_tag[1]; $orig_name =~ s/\s.+$//; $orig_name =~ s/\#.+$//; $orig_name =~ s/^\@//;
 				$read_name .= ":num=$MODE_assigned{$mode}:tag=$orig_name";
 				
+				# check for annot here
+				if (defined $MODE_ANNOT{$mode}) {
+					$annot = "unassigned";
+					if (defined $MODE_CELLID_annot{$mode}{$corrected_combined}) { # straight annot
+						$annot = $MODE_CELLID_annot{$mode}{$corrected_combined};
+						$MODE_ANNOT_assigned{$mode}{$annot}++;
+					} elsif (defined $MODE_CELLID_WILDCARDS{$mode}) { # wildcard annot
+						foreach $wildcard_pattern (keys %{$MODE_CELLID_WILDCARDS{$mode}}) { # check annots with wildcards
+							if ($annot eq "unassigned") {
+								$translated = $corrected_combined;
+								substr($translated,$_,1) =~ tr/[ACGT]/-/ foreach @{$MODE_CELLID_WILDCARDS{$mode}{$wildcard_pattern}};
+								if (defined $opt{'V'}) {print STDERR "\tWILDCARD CHECK: mode $mode, pattern $wildcard_pattern, corrected $corrected_combined, translated $translated\n"};
+								if (defined $MODE_CELLID_annot{$mode}{$translated}) {
+									$annot = $MODE_CELLID_annot{$mode}{$translated};
+									$MODE_ANNOT_assigned{$mode}{$annot}++;
+									if (defined $opt{'V'}) {print STDERR "\t\tWildcard match to: $annot\n"};
+								}
+							}
+						}
+					}
+				}
+				
 				# pull reads $ quals then print
 				foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
 					if ($DEX_PARTS{$mode}{'read'}{$read_number}[2] < 1) { # rest of read from start position
@@ -525,22 +547,10 @@ while ($in_tag[1] = <R1IN>) {
 					}
 					
 					if (defined $MODE_ANNOT{$mode}) {
-						if (defined $MODE_CELLID_annot{$mode}{$corrected_combined}) { # straight annot
-							$annot = $MODE_CELLID_annot{$mode}{$corrected_combined};
-							$MODE_ANNOT_assigned{$mode}{$annot}++;
-							$handle = "$mode.$annot.R$read_number";
-						} elsif (defined $MODE_CELLID_WILDCARDS{$mode}) { # wildcard annot
-							$annot = "null";
-							@ID_BASES = split(//, $corrected_combined);
-							foreach $cellID (keys %{$MODE_CELLID_WILDCARDS{$mode}}) { # check annots with wildcards
-								if ($annot eq "null") {
-									@CHECK = @ID_BASES;
-									
-								}
-							}
-						} else { # not in an annot
+						if ($annot eq "unassigned") {
 							$handle = "$mode.unassigned.R$read_number";
-							$MODE_unassigned{$mode}++;
+						} else {
+							$handle = "$mode.$annot.R$read_number";
 						}
 					} else {
 						$handle = "$mode.R$read_number";
