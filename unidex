@@ -190,7 +190,6 @@ if (!defined $opt{'3'}) {
 } else {$index2_fastq = "$opt{'3'}"}
 if (defined $opt{'V'}) {print STDERR "INFO: index 2 fastq = $index2_fastq\n"};
 
-
 # load modes
 %DEX_PARTS = (); %MODE_ixCT = ();
 open MODES, "$modes_file";
@@ -235,10 +234,18 @@ while ($l = <MODES>) {
 							if ($part_length < 1) {die "ERROR: Index lengths must be specified (ie cannot be '0' for rest of read), issue index: $mode, $part_name\n"};
 							$index_number = $part_name; $index_number =~ s/index//i;
 							$MODE_ixCT{$mode}++;
-							if ($index_number =~ /=/) { # HD override found
+							if ($index_number =~ /=/) { # HD override and/or revcomp found
 								($number,$hd) = split(/=/, $index_number);
 								$index_number = $number;
-								$INDEX_HAMMING{$mode}{'index'}{$index_number} = $hd;
+								if ($hd =~ /r/i) {
+									$hd =~ s/r//i;
+									$DEX_PARTS{$mode}{'index_rev'}{$index_number} = 1;
+								}
+								if ($hd ne "") {
+									$INDEX_HAMMING{$mode}{'index'}{$index_number} = $hd;
+								} else {
+									$INDEX_HAMMING{$mode}{'index'}{$index_number} = $def_hd;
+								}
 							} else {
 								$INDEX_HAMMING{$mode}{'index'}{$index_number} = $def_hd;
 							}
@@ -304,6 +311,17 @@ foreach $mode (@MODES_LIST) {
 
 # load index files & compute hamming distance
 
+# revcomp if needed
+%REVCOMP = ("A" => "T", "C" => "G", "G" => "C", "T" => "A", "N" => "N");
+sub revcomp {
+        @INSEQ = split(//, uc($_[0]));
+        $revcomp = "";
+        for ($pos = (@INSEQ-1); $pos >= 0; $pos--) {
+                $revcomp .= $REVCOMP{$INSEQ[$pos]};
+        }
+        return $revcomp;
+}
+
 # hash of bases to swap out
 %OTHER_BASES = ();
 %{$OTHER_BASES{'A'}} = ("C" => "C", "G" => "G", "T" => "T", "N" => "N");
@@ -323,7 +341,12 @@ foreach $mode (@MODES_LIST) {
 			chomp $l;
 			@P = split(/\t/, $l);
 			$seq = uc($P[-1]);
-			$MODE_IXN_CHECK_true{$mode}{$index_number}{$seq} = $seq;
+			if (defined $DEX_PARTS{$mode}{'index_rev'}{$index_number}) {
+				$revcomp = revcomp($seq);
+				$MODE_IXN_CHECK_true{$mode}{$index_number}{$revcomp} = $revcomp;
+			} else {
+				$MODE_IXN_CHECK_true{$mode}{$index_number}{$seq} = $seq;
+			}
 		} close IN;
 		
 		# make HD hash
