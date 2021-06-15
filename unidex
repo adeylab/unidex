@@ -62,7 +62,7 @@ if (!defined $ARGV[0]) {die $die};
 
 # load & parse options
 use Getopt::Std; %opt = ();
-getopts("R:M:O:r:o:m:1:2:3:4:D:VS:g:A:uL", \%opt);
+getopts("R:M:O:r:o:m:1:2:3:4:D:VS:g:A:uLI:", \%opt);
 
 # first check if mode file is queried
 if (defined $opt{'L'}) {
@@ -71,7 +71,7 @@ if (defined $opt{'L'}) {
 	open MODES, "$modes_file";
 	while ($l = <MODES>) {
 		chomp $l;
-		if ($1 =~ /^#+/) {
+		if ($l =~ /^#+/) {
 			if ($l =~ /Standard/ || $l =~ /Special/) {
 				print "$l\n";
 			}
@@ -93,7 +93,7 @@ if (defined $opt{'I'}) {
 	open MODES, "$modes_file";
 	while ($l = <MODES>) {
 		chomp $l;
-		if ($1 !~ /^#+/) {
+		if ($l !~ /^#+/) {
 			@P = split(/\s/, $l);
 			if (defined $MODES{$P[0]}) {
 				print "Mode: $P[0]\n\tRead1 = $P[1]\n\tIndex1 = $P[2]\n\tIndex2 = $P[3]\n\tRead2 = $P[4]\n\tIndex Files:\n";
