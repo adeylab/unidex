@@ -72,7 +72,7 @@ if (defined $opt{'L'}) {
 	while ($l = <MODES>) {
 		chomp $l;
 		if ($l =~ /^#+/) {
-			if ($l =~ /Standard/ || $l =~ /Special/) {
+			if (($l =~ /Standard/i || $l =~ /Special/i) && $l =~ /Assay/i) {
 				print "$l\n";
 			}
 		} else {
