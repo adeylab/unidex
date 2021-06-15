@@ -19,7 +19,10 @@ Usage:
 
 unidex [options]
 
-Options:
+Option:  -L   List modes present in the mode config file (def = $modes_file)
+              Can specifiy a different mode file with -m and it will list modes in that file
+
+Run Options:
   -R  [STR]   Run Folder (where fastq files are present)
   -M  [LIST]  Mode list - modes must be specified in the modes.cfg file ($modes_file)
               Modes must be comma separated and will demultiplex in specified order listed.
@@ -51,9 +54,28 @@ Other Options:
 
 ";
 
+# die on naked call
+if (!defined $ARGV[0]) {die $die};
+
 # load & parse options
 use Getopt::Std; %opt = ();
-getopts("R:M:O:r:o:m:1:2:3:4:D:VS:g:A:u", \%opt);
+getopts("R:M:O:r:o:m:1:2:3:4:D:VS:g:A:uL", \%opt);
+
+# first check if mode file is queried
+if (defined $opt{'L'}) {
+	if (defined $opt{'m'}) {$modes_file = $opt{'m'}};
+	print "\nUnidex modes file: $modes_file\nModes present:\n";
+	open MODES, "$modes_file";
+	while ($l = <MODES>) {
+		chomp $l;
+		if ($1 !~ /^#/) {
+			@P = split(/\s/, $l);
+			print "\t$P[0]\n";
+		}
+	} close MODES;
+	print "\n";
+	exit;
+}
 
 if (!defined $opt{'R'}) {
 	if (defined $opt{'1'} || defined $opt{'4'} || defined $opt{'2'} || defined $opt{'3'}) {
@@ -200,7 +222,7 @@ while ($l = <MODES>) {
 	} elsif ($l =~ /^#/) {
 		@HEADER = split(/\t/, $l);
 	} else {
-		@P = split(/\t/, $l);
+		@P = split(/\s/, $l);
 		$mode = $P[0];
 		if (defined $MODES{$P[0]}) {
 			if (defined $opt{'V'}) {print STDERR "INFO: Mode $P[0] found. Parsing...\n"};
