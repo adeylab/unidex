@@ -68,7 +68,9 @@ if (defined $opt{'L'}) {
 	open MODES, "$modes_file";
 	while ($l = <MODES>) {
 		chomp $l;
-		if ($1 =~ /^#/) {
+		if ($l =~ /^##/) {
+			# comment lines (do nothign now)
+		} elsif ($1 =~ /^#/) {
 			if ($l =~ /Standard/ || $l =~ /Special/) {
 				print "$l\n";
 			}
