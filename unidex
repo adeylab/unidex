@@ -68,7 +68,7 @@ if (defined $opt{'L'}) {
 	open MODES, "$modes_file";
 	while ($l = <MODES>) {
 		chomp $l;
-		if ($1 !~ /^#/) {
+		if ($1 !~ /^\#/) {
 			@P = split(/\s/, $l);
 			print "\t$P[0]\n";
 		}
@@ -163,12 +163,12 @@ if (defined $opt{'A'}) {
 if (!defined $opt{'1'}) {
 	if (-e "$fastq_path/$run_name/Undetermined_S0_L001_R1_001.fastq.gz") {
 		$read1_fastq = "$fastq_path/$run_name/Undetermined_S0_L001_R1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L002_R1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L003_R1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L004_R1_001.fastq.gz";
-		$read_used[1] = "true";
+		$read_present[1] = "true";
 	} elsif (-e "$fastq_path/$run_name/Undetermined_S0_R1_001.fastq.gz") {
 		$read1_fastq = "$fastq_path/$run_name/Undetermined_S0_R1_001.fastq.gz";
-		$read_used[1] = "true";
+		$read_present[1] = "true";
 	} else {
-		$read1_fastq = "null"; $read_used[1] = "null";
+		$read1_fastq = "null"; $read_present[1] = "false";
 	}
 } else {$read1_fastq = "$opt{'1'}"}
 if (defined $opt{'V'}) {print STDERR "INFO: read 1 fastq = $read1_fastq\n"};
@@ -176,12 +176,12 @@ if (defined $opt{'V'}) {print STDERR "INFO: read 1 fastq = $read1_fastq\n"};
 if (!defined $opt{'4'}) {
 	if (-e "$fastq_path/$run_name/Undetermined_S0_L001_R2_001.fastq.gz") {
 		$read2_fastq = "$fastq_path/$run_name/Undetermined_S0_L001_R2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L002_R2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L003_R2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L004_R2_001.fastq.gz";
-		$read_used[4] = "true";
+		$read_present[4] = "true";
 	} elsif (-e "$fastq_path/$run_name/Undetermined_S0_R2_001.fastq.gz") {
 		$read2_fastq = "$fastq_path/$run_name/Undetermined_S0_R2_001.fastq.gz";
-		$read_used[4] = "true";
+		$read_present[4] = "true";
 	} else {
-		$read2_fastq = "null"; $read_used[4] = "null";
+		$read2_fastq = "null"; $read_present[4] = "false";
 	}
 } else {$read2_fastq = "$opt{'4'}"}
 if (defined $opt{'V'}) {print STDERR "INFO: read 2 fastq = $read2_fastq\n"};
@@ -189,12 +189,12 @@ if (defined $opt{'V'}) {print STDERR "INFO: read 2 fastq = $read2_fastq\n"};
 if (!defined $opt{'2'}) {
 	if (-e "$fastq_path/$run_name/Undetermined_S0_L001_I1_001.fastq.gz") {
 		$index1_fastq = "$fastq_path/$run_name/Undetermined_S0_L001_I1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L002_I1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L003_I1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L004_I1_001.fastq.gz";
-		$read_used[2] = "true";
+		$read_present[2] = "true";
 	} elsif (-e "$fastq_path/$run_name/Undetermined_S0_I1_001.fastq.gz") {
 		$index1_fastq = "$fastq_path/$run_name/Undetermined_S0_I1_001.fastq.gz";
-		$read_used[2] = "true";
+		$read_present[2] = "true";
 	} else {
-		$index1_fastq = "null"; $read_used[2] = "null";
+		$index1_fastq = "null"; $read_present[2] = "false";
 	}
 } else {$index1_fastq = "$opt{'2'}"}
 if (defined $opt{'V'}) {print STDERR "INFO: index 1 fastq = $index1_fastq\n"};
@@ -202,12 +202,12 @@ if (defined $opt{'V'}) {print STDERR "INFO: index 1 fastq = $index1_fastq\n"};
 if (!defined $opt{'3'}) {
 	if (-e "$fastq_path/$run_name/Undetermined_S0_L001_I2_001.fastq.gz") {
 		$index2_fastq = "$fastq_path/$run_name/Undetermined_S0_L001_I2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L002_I2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L003_I2_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L004_I2_001.fastq.gz";
-		$read_used[3] = "true";
+		$read_present[3] = "true";
 	} elsif (-e "$fastq_path/$run_name/Undetermined_S0_I2_001.fastq.gz") {
 		$index2_fastq = "$fastq_path/$run_name/Undetermined_S0_I2_001.fastq.gz";
-		$read_used[3] = "true";
+		$read_present[3] = "true";
 	} else {
-		$index2_fastq = "null"; $read_used[3] = "null";
+		$index2_fastq = "null"; $read_present[3] = "false";
 	}
 } else {$index2_fastq = "$opt{'3'}"}
 if (defined $opt{'V'}) {print STDERR "INFO: index 2 fastq = $index2_fastq\n"};
@@ -235,10 +235,8 @@ while ($l = <MODES>) {
 				if ($P[$i] =~ /unused/i) {
 					if (defined $opt{'V'}) {print STDERR "\t$HEADER[$i] is unused.\n"};
 				} else {
-					if ($i == 1 && $read1_fastq eq "null") {die "ERROR: mode $mode requires Read 1 and read 1 fastq could not be detected or was not specified!\n"};
-					if ($i == 2 && $index1_fastq eq "null") {die "ERROR: mode $mode requires Index 1 and index 1 fastq could not be detected or was not specified!\n"};
-					if ($i == 3 && $index2_fastq eq "null") {die "ERROR: mode $mode requires Index 1 and index 1 fastq could not be detected or was not specified!\n"};
-					if ($i == 4 && $read2_fastq eq "null") {die "ERROR: mode $mode requires Read 2 and read 2 fastq could not be detected or was not specified!\n"};
+					# check that the fastq is present in the directory for that mode
+					if ($read_present[$i] eq "false") {die "ERROR: mode $mode requires read ID $i and the fastq could not be detected or was not specified!\n"};
 					$pos = 0;
 					@READ_PARTS = split(/,/, $P[$i]);
 					for ($part = 0; $part < @READ_PARTS; $part++) {
