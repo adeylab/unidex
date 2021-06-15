@@ -98,7 +98,13 @@ if (defined $opt{'I'}) {
 			if (defined $MODES{$P[0]}) {
 				print "Mode: $P[0]\n\tRead1 = $P[1]\n\tIndex1 = $P[2]\n\tIndex2 = $P[3]\n\tRead2 = $P[4]\n\tIndex Files:\n";
 				for ($i = 5; $i<@P; $i++) {
-					print  "\t\t$P[$i]\n";
+					print  "\t\t$P[$i] ";
+					($null,$file) = split(/=/, $P[$i]);
+					if (-e "$file") {
+						print "(Exists!)\n";
+					} else {
+						print "(Does not exist!)\n";
+					}
 				}
 				$MODES{$P[0]} = 1;
 			}
