@@ -100,9 +100,15 @@ if (defined $opt{'I'}) {
 				for ($i = 5; $i<@P; $i++) {
 					print  "\t\t$P[$i]\n";
 				}
+				$MODES{$P[0]} = 1;
 			}
 		}
 	} close MODES;
+	foreach $mode (keys %MODES) {
+		if ($MODES{$mode} < 1) {
+			print "Mode: $mode was not found in modes file: $modes_file!\n";
+		}
+	}
 	print "\n";
 	exit;
 }
