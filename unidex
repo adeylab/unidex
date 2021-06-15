@@ -19,8 +19,11 @@ Usage:
 
 unidex [options]
 
-Option:  -L   List modes present in the mode config file (def = $modes_file)
-              Can specifiy a different mode file with -m and it will list modes in that file
+Info Options:
+  -L          List modes present in the mode config file (def = $modes_file)
+              Can specifiy a different mode file with -m and it will list modes in that file.
+  -I  [MODE]  Provide info on one or more comma separated modes as detailed in the specified
+              modes file (-m or default).
 
 Run Options:
   -R  [STR]   Run Folder (where fastq files are present)
@@ -68,9 +71,7 @@ if (defined $opt{'L'}) {
 	open MODES, "$modes_file";
 	while ($l = <MODES>) {
 		chomp $l;
-		if ($l =~ /^##/) {
-			# comment lines (do nothign now)
-		} elsif ($1 =~ /^#/) {
+		if ($1 =~ /^#+/) {
 			if ($l =~ /Standard/ || $l =~ /Special/) {
 				print "$l\n";
 			}
@@ -82,6 +83,30 @@ if (defined $opt{'L'}) {
 	print "\n";
 	exit;
 }
+
+# see if mode info is requested
+if (defined $opt{'I'}) {
+	if (defined $opt{'m'}) {$modes_file = $opt{'m'}};
+	@MODES_LIST = split(/,/, $opt{'I'});
+	foreach $mode (@MODES_LIST) {$MODES{$mode} = 0};
+	print "\nUnidex modes file: $modes_file\n";
+	open MODES, "$modes_file";
+	while ($l = <MODES>) {
+		chomp $l;
+		if ($1 !~ /^#+/) {
+			@P = split(/\s/, $l);
+			if (defined $MODES{$P[0]}) {
+				print "Mode: $P[0]\n\tRead1 = $P[1]\n\tIndex1 = $P[2]\n\tIndex2 = $P[3]\n\tRead2 = $P[4]\n\tIndex Files:\n";
+				for ($i = 5; $i<@P; $i++) {
+					print  "\t\t$P[$i]\n";
+				}
+			}
+		}
+	} close MODES;
+	print "\n";
+	exit;
+}
+
 
 if (!defined $opt{'R'}) {
 	if (defined $opt{'1'} || defined $opt{'4'} || defined $opt{'2'} || defined $opt{'3'}) {
