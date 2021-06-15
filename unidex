@@ -68,7 +68,11 @@ if (defined $opt{'L'}) {
 	open MODES, "$modes_file";
 	while ($l = <MODES>) {
 		chomp $l;
-		if ($1 !~ /^\#/) {
+		if ($1 =~ /^#/) {
+			if ($l =~ /Standard/ || $l =~ /Special/) {
+				print "$l\n";
+			}
+		} else {
 			@P = split(/\s/, $l);
 			print "\t$P[0]\n";
 		}
