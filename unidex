@@ -660,16 +660,16 @@ foreach $mode (@MODES_LIST) {
 
 # print report
 open RPT, ">$dex_path/$out_name/$out_name.unidex.report.txt";
-$pct = sprintf("%.2f", $assigned/$total_reads);
-print RPT "Total Reads = $total_reads\nTotal Assigned = $assigned ($pct)\n";
+$pct = sprintf("%.2f", ($assigned/$total_reads)*100);
+print RPT "Total Reads = $total_reads\nTotal Assigned = $assigned ($pct%)\n";
 foreach $mode (@MODES_LIST) {
 	$pct = sprintf("%.2f", ($MODE_assigned{$mode}/$assigned)*100);
-	print RPT "Mode $mode Assigned = $MODE_assigned{$mode} ($pct)\n";
+	print RPT "Mode $mode Assigned = $MODE_assigned{$mode} ($pct%)\n";
 	if (defined $MODE_ANNOT{$mode}) {
 		foreach $annot (keys %{$MODE_ANNOT{$mode}}) {
 			$pct_all = sprintf("%.2f", ($MODE_ANNOT_assigned{$mode}{$annot}/$assigned)*100);
 			$pct_mode = sprintf("%.2f", ($MODE_ANNOT_assigned{$mode}{$annot}/$MODE_assigned{$mode})*100);
-			print RPT "\tAnnot $annot Assigned = $MODE_ANNOT_assigned{$mode}{$annot} ($pct_all of All, $pct_mode of $mode)\n";
+			print RPT "\tAnnot $annot Assigned = $MODE_ANNOT_assigned{$mode}{$annot} ($pct_all% of All, $pct_mode% of $mode)\n";
 		}
 	}
 	
