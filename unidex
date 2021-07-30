@@ -315,9 +315,17 @@ while ($l = <MODES>) {
 							if (defined $opt{'V'}) {print STDERR "INFO: mode $mode, index number $index_number hamming distance set to: $INDEX_HAMMING{$mode}{'index'}{$index_number}.\n"};
 							if (!defined $DEX_PARTS{$mode}{'index'}{$index_number}) {
 								if (defined $opt{'V'}) {print STDERR "INFO: mode $mode, index number $index_number being stored.\n"};
-							@{$DEX_PARTS{$mode}{'index'}{$index_number}} = ($i,$pos,$part_length);
-								$INDEX_FILES{$mode}{'index'}{$index_number} = "null";
-								$pos+=$part_length;
+								if ($part_length =~ /sub/) {
+									($region_length,$index_length) = split(/sub/, $part_length);
+									$DEX_PARTS{$mode}{'subset'}{$index_number} = $index_length;
+									@{$DEX_PARTS{$mode}{'index'}{$index_number}} = ($i,$pos,$region_length);
+									$INDEX_FILES{$mode}{'index'}{$index_number} = "null";
+									$pos+=$region_length;
+								} else {
+									@{$DEX_PARTS{$mode}{'index'}{$index_number}} = ($i,$pos,$part_length);
+									$INDEX_FILES{$mode}{'index'}{$index_number} = "null";
+									$pos+=$part_length;
+								}
 							} else {
 								die "ERROR: Two instances of index - $index_number were specified in the mode configuration for $mode!\n";
 							}
@@ -534,13 +542,31 @@ while ($in_tag[1] = <R1IN>) {
 									$DEX_PARTS{$mode}{'index'}{$index_number}[1],
 									$DEX_PARTS{$mode}{'index'}{$index_number}[2]);
 				if (defined $opt{'V'}) {print STDERR "\t\tPulled Index Number $index_number = $pulled_sequence ... "};
-				if (defined $MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}) {
-					if (defined $opt{'V'}) {print STDERR "pass! Corrected index = $MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}\n"};
-					$ix_pass++;
-					$corrected_combined .= "$MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}";
-				} else {
-					if (defined $opt{'V'}) {print STDERR "failed, skipping read for $mode.\n"};
-					$ix_fail++; $index_number = $MODE_ixCT{$mode}+1;
+				if (defined $DEX_PARTS{$mode}{'subset'}{$index_number}) { # SCAN FOR SUBSET INDEX!
+					$subset_pass = 0;
+					for ($search_start = 0; $search_start <= ($DEX_PARTS{$mode}{'index'}{$index_number}[2] - $DEX_PARTS{$mode}{'subset'}{$index_number}); $search_start++) {
+						$scanned_subsequence = substr($pulled_sequence, $search_start, $DEX_PARTS{$mode}{'subset'}{$index_number});
+						if (defined $MODE_IXN_CHECK_true{$mode}{$index_number}{$scanned_subsequence}) {
+							if (defined $opt{'V'}) {print STDERR "pass! Corrected index = $MODE_IXN_CHECK_true{$mode}{$index_number}{$scanned_subsequence} pulled as subset of $pulled_sequence\n"};
+							$ix_pass++;
+							$corrected_combined .= "$MODE_IXN_CHECK_true{$mode}{$index_number}{$scanned_subsequence}";
+							$search_start+=$DEX_PARTS{$mode}{'index'}{$index_number}[2];
+							$subset_pass++;
+						}
+					}
+					if ($subset_pass > 0) {
+						if (defined $opt{'V'}) {print STDERR "failed to find passing subset of length $DEX_PARTS{$mode}{'subset'}{$index_number} for $pulled_sequence, skipping read for $mode.\n"};
+						$ix_fail++; $index_number = $MODE_ixCT{$mode}+1;
+					}
+				} else { # normal mode
+					if (defined $MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}) {
+						if (defined $opt{'V'}) {print STDERR "pass! Corrected index = $MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}\n"};
+						$ix_pass++;
+						$corrected_combined .= "$MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}";
+					} else {
+						if (defined $opt{'V'}) {print STDERR "failed, skipping read for $mode.\n"};
+						$ix_fail++; $index_number = $MODE_ixCT{$mode}+1;
+					}
 				}
 			}
 			if ($ix_fail < 1 && $ix_pass == $MODE_ixCT{$mode}) {
