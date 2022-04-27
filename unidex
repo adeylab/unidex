@@ -60,6 +60,8 @@ Other Options:
 # die on naked call
 if (!defined $ARGV[0]) {die $die};
 
+$input_params = join(" ", @ARGV);
+
 # load & parse options
 use Getopt::Std; %opt = ();
 getopts("R:M:O:r:o:m:1:2:3:4:D:VS:g:A:uLI:", \%opt);
@@ -686,6 +688,7 @@ foreach $mode (@MODES_LIST) {
 
 # print report
 open RPT, ">$dex_path/$out_name/$out_name.unidex.report.txt";
+print RPT "Call: unidex $input_params\n";
 $pct = sprintf("%.2f", ($assigned/$total_reads)*100);
 print RPT "Total Reads = $total_reads\nTotal Assigned = $assigned ($pct%)\n";
 foreach $mode (@MODES_LIST) {
