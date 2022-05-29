@@ -223,9 +223,9 @@ if (defined $opt{'l'}) {
 		}
 		sleep(300);
 		$sleep_count++;
-		if ($sleep_count>288) {
-			system("slack -m \"Delayed unidex for run $run_name exceeded 24 hours. Canceling.\" sequencing_runs");
-			die "ERROR: Delay longer than 24 hours. Canceling delayed unidex run!\n";
+		if ($sleep_count>864) {
+			system("slack -m \"Delayed unidex for run $run_name exceeded 72 hours. Canceling.\" sequencing_runs");
+			die "ERROR: Delay longer than 72 hours. Canceling delayed unidex run!\n";
 		}
 	}
 	if ($prop_complete < 10) {
