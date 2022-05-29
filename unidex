@@ -209,7 +209,7 @@ if (defined $opt{'A'}) {
 # first check if it is in delayed mode
 if (defined $opt{'l'}) {
 	if (!defined $opt{'R'}) {die "\nERROR: delayed mode only works when the run folder is specified!\n$die"};
-	system("slack -c \"Delayed unidex for run $run_name started.\nModes Specified: $opt{'M'}\nWaiting for completed fastq files...\" sequencing_runs");
+	system("slack -m \"Delayed unidex for run $run_name started.\nModes Specified: $opt{'M'}\nWaiting for completed fastq files...\" sequencing_runs");
 	$prop_complete = 0;
 	$sleep_count = 0;
 	while ($prop_complete < 1) {
@@ -224,16 +224,16 @@ if (defined $opt{'l'}) {
 		sleep(300);
 		$sleep_count++;
 		if ($sleep_count>288) {
-			system("slack -c \"Delayed unidex for run $run_name exceeded 24 hours. Canceling.\" sequencing_runs");
+			system("slack -m \"Delayed unidex for run $run_name exceeded 24 hours. Canceling.\" sequencing_runs");
 			die "ERROR: Delay longer than 24 hours. Canceling delayed unidex run!\n";
 		}
 	}
 	if ($prop_complete < 10) {
-		system("slack -c \"Delayed unidex for run $run_name triggered with no errors! Starting unidex.\" sequencing_runs");
+		system("slack -m \"Delayed unidex for run $run_name triggered with no errors. Starting unidex.\" sequencing_runs");
 	} elsif ($prop_complete < 100) {
-		system("slack -c \"Delayed unidex for run $run_name triggered! (Note: no propagation of fastq files) Starting unidex.\" sequencing_runs");
+		system("slack -m \"Delayed unidex for run $run_name triggered. Note: no propagation of fastq files. Starting unidex.\" sequencing_runs");
 	} else {
-		system("slack -c \"Delayed unidex for run $run_name cannot start due to fastq generation errors! Check run directory log files!\" sequencing_runs");
+		system("slack -m \"Delayed unidex for run $run_name cannot start due to fastq generation errors! Check run directory log files.\" sequencing_runs");
 		exit;
 	}
 }
