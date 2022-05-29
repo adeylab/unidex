@@ -29,6 +29,9 @@ Run Options:
   -R  [STR]   Run Folder (where fastq files are present)
   -M  [LIST]  Mode list - modes must be specified in the modes.cfg file ($modes_file)
               Modes must be comma separated and will demultiplex in specified order listed.
+  -l          Delayed mode. Will wait until fastq files are propagated
+              in the specified fastq directory (-r), then will run.
+              Only works when specifying run name, not individual fastq files.
 
 Default Options:
   -O  [STR]   Output folder (def = run name, -R)
@@ -64,7 +67,7 @@ $input_params = join(" ", @ARGV);
 
 # load & parse options
 use Getopt::Std; %opt = ();
-getopts("R:M:O:r:o:m:1:2:3:4:D:VS:g:A:uLI:", \%opt);
+getopts("R:M:O:r:o:m:1:2:3:4:D:VS:g:A:uLI:l", \%opt);
 
 # first check if mode file is queried
 if (defined $opt{'L'}) {
@@ -200,6 +203,38 @@ if (defined $opt{'A'}) {
 				
 			}
 		}
+	}
+}
+
+# first check if it is in delayed mode
+if (defined $opt{'l'}) {
+	if (!defined $opt{'R'}) {die "\nERROR: delayed mode only works when the run folder is specified!\n$die"};
+	system("slack -c \"Delayed unidex for run $run_name started. Waiting for completed fastq files.\" sequencing_runs");
+	$prop_complete = 0;
+	$sleep_count = 0;
+	while ($prop_complete < 1) {
+		if (-e "$fastq_path/$run_name/$run_name.fastq_processing.log") {
+			open LOG, "$fastq_path/$run_name/$run_name.fastq_processing.log";
+			while ($l = <LOG>) {
+				if ($l =~ /Propagation complete with no errors!/) {$prop_complete = 1};
+				if ($l =~ /No additional fastq folders provided for propagation/) {$prop_complete = 10};
+				if ($l =~ /check directories for discrepancies/) {$prop_complete = 100};
+			} close LOG;
+		}
+		sleep(300);
+		$sleep_count++;
+		if ($sleep_count>288) {
+			system("slack -c \"Delayed unidex for run $run_name exceeded 24 hours. Canceling.\" sequencing_runs");
+			die "ERROR: Delay longer than 24 hours. Canceling delayed unidex run!\n";
+		}
+	}
+	if ($prop_complete < 10) {
+		system("slack -c \"Delayed unidex for run $run_name triggered! Starting unidex.\" sequencing_runs");
+	} elsif ($prop_complete < 100) {
+		system("slack -c \"Delayed unidex for run $run_name triggered! (Note: no propagation of fastq files) Starting unidex.\" sequencing_runs");
+	} else {
+		system("slack -c \"Delayed unidex for run $run_name cannot start due to fastq generation errors! Check run directory log files!\" sequencing_runs");
+		exit;
 	}
 }
 
