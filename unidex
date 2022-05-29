@@ -750,6 +750,6 @@ foreach $mode (@MODES_LIST) {
 }
 close RPT;
 
-
+system("slack -F $dex_path/$out_name/$out_name.unidex.report.txt -c \"Unidex complete for run $run_name.\" sequencing_runs");
 
 exit;
