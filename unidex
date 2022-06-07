@@ -5,15 +5,17 @@
 $modes_file = "/home/groups/oroaklab/demultiplex/unidex_modes.cfg";
 $fastq_path = "/home/groups/oroaklab/fastq";
 $dex_path = "/home/groups/oroaklab/demultiplex";
+$triplet2ascii_file = "/home/groups/oroaklab/src/unidex/triplet2ascii.txt";
 $def_hd = 2;
 $gzip = "gzip";
 $zcat = "zcat";
+$min_size_for_batching = 10000;
 
 # Description here
 
 $die = "
 
-UNIDEX (Universal Demultiplexer, v0.210607-test1)
+UNIDEX (Universal Demultiplexer, v0.220604)
 
 Usage:
 
@@ -54,6 +56,8 @@ Other Options:
               [mode1]=[annot_file1],[mode2]=[annot_file2],etc... OR
 			  First column of annot file designates mode for thast annot
   -u          Only report a read to the first mode that it matches (def = all)
+  -c  [STR]   File for compressing base triplets in reads names. ($triplet2ascii_file)
+              It is strongly discouraged to use a different file for this.
   -g  [STR]   Gzip command (def = $gzip)
   -z  [STR]   Zcat command (def = $zcat)
   -V          Verbose / debug mode (outputs to STDERR)
@@ -67,7 +71,7 @@ $input_params = join(" ", @ARGV);
 
 # load & parse options
 use Getopt::Std; %opt = ();
-getopts("R:M:O:r:o:m:1:2:3:4:D:VS:g:A:uLI:l", \%opt);
+getopts("R:M:O:r:o:m:1:2:3:4:D:VS:g:A:uLI:lc:", \%opt);
 
 # first check if mode file is queried
 if (defined $opt{'L'}) {
@@ -104,11 +108,15 @@ if (defined $opt{'I'}) {
 				print "Mode: $P[0]\n\tRead1 = $P[1]\n\tIndex1 = $P[2]\n\tIndex2 = $P[3]\n\tRead2 = $P[4]\n\tIndex Files:\n";
 				for ($i = 5; $i<@P; $i++) {
 					print  "\t\t$P[$i] ";
-					($null,$file) = split(/=/, $P[$i]);
-					if (-e "$file") {
-						print "(Exists!)\n";
+					($index_number,$file) = split(/=/, $P[$i]);
+					if ($index_number =~ /^index/) {
+						if (-e "$file") {
+							print "(Exists!)\n";
+						} else {
+							print "(Does not exist!)\n";
+						}
 					} else {
-						print "(Does not exist!)\n";
+						print "\n";
 					}
 				}
 				$MODES{$P[0]} = 1;
@@ -147,6 +155,7 @@ if (!defined $opt{'O'}) {$opt{'O'} = $opt{'R'}};
 if (defined $opt{'D'}) {$def_hd = $opt{'D'}};
 $out_name = $opt{'O'}; $out_name =~ s/\/$//;
 $run_name = $opt{'R'}; $run_name =~ s/\/$//;
+if (defined $opt{'c'}) {$triplet2ascii_file = $opt{'c'}};
 
 # annotation loading
 if (defined $opt{'A'}) {
@@ -293,7 +302,7 @@ if (!defined $opt{'3'}) {
 if (defined $opt{'V'}) {print STDERR "INFO: index 2 fastq = $index2_fastq\n"};
 
 # load modes
-%DEX_PARTS = (); %MODE_ixCT = ();
+%DEX_PARTS = (); %MODE_ixCT = (); %MODE_SPECIAL = (); $ASCII_USE = 0;
 open MODES, "$modes_file";
 while ($l = <MODES>) {
 	chomp $l;
@@ -304,8 +313,8 @@ while ($l = <MODES>) {
 	} else {
 		@P = split(/\s/, $l);
 		$mode = $P[0];
-		if (defined $MODES{$P[0]}) {
-			if (defined $opt{'V'}) {print STDERR "INFO: Mode $P[0] found. Parsing...\n"};
+		if (defined $MODES{$mode}) {
+			if (defined $opt{'V'}) {print STDERR "INFO: Mode $mode found. Parsing...\n"};
 			$MODES{$mode} = 1;
 			# parse the four reads and store information on components
 			%{$DEX_PARTS{$mode}} = ();
@@ -385,19 +394,50 @@ while ($l = <MODES>) {
 				print STDERR "INFO: Mode $mode stored components:\n";
 				foreach $class (keys %{$DEX_PARTS{$P[0]}}) {
 					foreach $component (keys %{$DEX_PARTS{$P[0]}{$class}}) {
-						print STDERR "\t$class\t$component = $DEX_PARTS{$P[0]}{$class}{$component}[0],$DEX_PARTS{$P[0]}{$class}{$component}[1],$DEX_PARTS{$P[0]}{$class}{$component}[2]\n";
+						print STDERR "\t$class\t$component = $DEX_PARTS{$mode}{$class}{$component}[0],$DEX_PARTS{$mode}{$class}{$component}[1],$DEX_PARTS{$mode}{$class}{$component}[2]\n";
 					}
 				}
 			}
 			
-			# load index file locations
+			# load index file locations & special flags
+			$MODE_SPECIAL{$mode}{'batch_size'} = 0; # set default batch size to 0 (all reads)
+			$MODE_SPECIAL{$mode}{'ascii'} = 0;
+			$MODE_SPECIAL{$mode}{'original'} = 0;
 			for ($i = 5; $i < @P; $i++) {
 				($index_name,$file) = split(/=/, $P[$i]);
-				$index_number = $index_name; $index_number =~ s/index//i;
-				if (defined $INDEX_FILES{$P[0]}{'index'}{$index_number}) {
-					$INDEX_FILES{$P[0]}{'index'}{$index_number} = $file;
+				if ($index_name =~ /flag/) {
+					@SPECIAL_FLAGS = split(/,/, $file);
+					foreach $flag (@SPECIAL_FLAGS) {
+						if ($flag =~ /_hd:/) {
+							($index_number,$hd) = split(/:/, $flag);
+							$index_number =~ s/_hd//; $index_number =~ s/index//;
+							$INDEX_HAMMING{$mode}{'index'}{$index_number} = $hd;
+						} elsif ($flag =~ /_rc/) {
+							$index_number =~ s/_rc//; $index_number =~ s/index//;
+							$DEX_PARTS{$mode}{'index_rev'}{$index_number} = 1;
+						} elsif ($flag =~ /batch/) {
+							($null,$batch_size) = split(/:/, $flag);
+							if ($batch_size < $min_size_for_batching) {
+								print STDERR "\tWARNING: batch size for mode $mode is set to $batch_size, less than the minimum of $min_size_for_batching. Forcing to $min_size_for_batching.\n";
+								$batch_size = $min_size_for_batching;
+							}
+							$MODE_SPECIAL{$mode}{'batch_size'} = $batch_size;
+						} elsif ($flag =~ /ascii/) {
+							$MODE_SPECIAL{$mode}{'ascii'} = 1;
+							$ASCII_USE = 1;
+						} elsif ($flag =~ /original/) {
+							$MODE_SPECIAL{$mode}{'original'} = 1;
+						} else {
+							print STDERR "\tWARNING: flag field ($flag) found for mode $mode, but cannot interpret the flag. See config file for description of viable flags. Ignoring field.\n";
+						}
+					}
 				} else {
-					print STDERR "\tWARNING: Index $index_number for $P[0] mode has a file but no index component specified! Ignoring file.\n";
+					$index_number = $index_name; $index_number =~ s/index//i;
+					if (defined $INDEX_FILES{$mode}{'index'}{$index_number}) {
+						$INDEX_FILES{$mode}{'index'}{$index_number} = $file;
+					} else {
+						print STDERR "\tWARNING: Index $index_number for $mode mode has a file ($file) but no index component specified! Ignoring file.\n";
+					}
 				}
 			}
 			
@@ -411,9 +451,51 @@ while ($l = <MODES>) {
 	}
 } close MODES;
 
+if ($ASCII_USE>0) {
+	# load ascii conversion file
+	open T2A, "$triplet2ascii_file";
+	while ($t2a_line = <T2A>) {
+		chomp $t2a_line;
+		($triplet,$ascii) = split(/\t/, $t2a_line);
+		$TRIPLET2ASCII{$triplet} = $ascii;
+		$ASCII2TRIPLET{$ascii} = $triplet;
+	} close T2A;
+	
+	# load subroutines for collapse/expand
+	sub collapse_barcode {
+		@BARCODE_PARTS = split(//, $_[0]);
+		$collapsed_out = "";
+		for ($barcode_pos = 0; $barcode_pos < @BARCODE_PARTS; $barcode_pos++) {
+			$triplet_to_convert = $BARCODE_PARTS[$barcode_pos];
+			$barcode_pos++;
+			if ($BARCODE_PARTS[$barcode_pos] =~ /[ACGT]/) {$triplet_to_convert .= $BARCODE_PARTS[$barcode_pos]} else {$triplet_to_convert .= "_"};
+			$barcode_pos++;
+			if ($BARCODE_PARTS[$barcode_pos] =~ /[ACGT]/) {$triplet_to_convert .= $BARCODE_PARTS[$barcode_pos]} else {$triplet_to_convert .= "_"};
+			if (!defined $TRIPLET2ASCII{$triplet_to_convert}) {die "ERROR: triplet $triplet_to_convert in barcode $_[0] cannot be converted!\n"};
+			$collapsed_out .= $TRIPLET2ASCII{$triplet_to_convert};
+		}
+		return $collapsed_out;
+	}
+
+	sub expand_barcode {
+		@ASCII_PARTS = split(//, $_[0]);
+		$expanded_out = "";
+		for ($ascii_char = 0; $ascii_char < @ASCII_PARTS; $ascii_char++) {
+			$expanded_out .= $ASCII2TRIPLET{$ASCII_PARTS[$ascii_char]};
+		}
+		$expanded_out =~ s/_+$//;
+		return $expanded_out;
+	}
+}
+
+# verify modes and components
 foreach $mode (@MODES_LIST) {
 	if ($MODES{$mode} < 1) {
 		die "ERROR: Mode $mode is listed but was not found in the modes config file: $modes_file!\n";
+	}
+	if ($MODE_SPECIAL{$mode}{'batch_size'} > 0 && defined $MODE_ANNOT{$mode}) {
+		print STDERR "WARNING: Batching is specified for mode $mode (nreads = $MODE_SPECIAL{$mode}{'batch_size'}) as well as annotation splitting which is not compatible. Ignoring batching and splitting by annotation only.\n";
+		$MODE_SPECIAL{$mode}{'batch_size'} = 0;
 	}
 }
 
@@ -437,11 +519,14 @@ sub revcomp {
 %{$OTHER_BASES{'G'}} = ("C" => "C", "A" => "A", "T" => "T", "N" => "N");
 %{$OTHER_BASES{'T'}} = ("C" => "C", "G" => "G", "A" => "A", "N" => "N");
 
-if (defined $opt{'V'}) {print STDERR "INFO: Generating hamming hashes ...\n"};
 
+# Generating hamming distance hashes
+
+if (defined $opt{'V'}) {print STDERR "INFO: Generating hamming hashes ...\n"};
 %MODE_IXN_CHECK_true = ();
 foreach $mode (@MODES_LIST) {
 	foreach $index_number (keys %{$INDEX_FILES{$mode}{'index'}}) {
+		$trim_warn = 0;
 		if (defined $opt{'V'}) {print STDERR "INFO: Mode: $mode, Index: $index_number, File = $INDEX_FILES{$mode}{'index'}{$index_number}\n"};
 		if (-e "$INDEX_FILES{$mode}{'index'}{$index_number}") {} else {die "ERROR: File: $INDEX_FILES{$mode}{'index'}{$index_number} does not exist!\n"};
 		open IN, "$INDEX_FILES{$mode}{'index'}{$index_number}";
@@ -449,12 +534,30 @@ foreach $mode (@MODES_LIST) {
 			chomp $l;
 			@P = split(/\t/, $l);
 			$seq = uc($P[-1]);
+			$index_length = length($seq);
+			
+			# check revcomp
 			if (defined $DEX_PARTS{$mode}{'index_rev'}{$index_number}) {
 				$revcomp = revcomp($seq);
-				$MODE_IXN_CHECK_true{$mode}{$index_number}{$revcomp} = $revcomp;
-			} else {
-				$MODE_IXN_CHECK_true{$mode}{$index_number}{$seq} = $seq;
+				$seq = $revcomp;
 			}
+			
+			# check length matching AFTER revcomp!
+			if ($DEX_PARTS{$mode}{'index'}{$index_number}[2] > $index_length) {
+				# fail!
+				die "ERROR: Index $index_number length specified for mode $mode ($DEX_PARTS{$mode}{'index'}{$index_number}[2]) is longer than index provided in $INDEX_FILES{$mode}{'index'}{$index_number} ($index_length, e.g. $seq)!\n";
+			} elsif ($DEX_PARTS{$mode}{'index'}{$index_number}[2] > $index_length) {
+				# trim
+				if ($trim_warn < 1) {
+					print STDERR "WARNING: Index $index_number length specified for mode $mode ($DEX_PARTS{$mode}{'index'}{$index_number}[2]) is shorter than specified length in mode config ($index_length, e.g. $seq), trimming!\n";
+					$trim_warn++;
+				}
+				$trimmed = substr($seq,0,$DEX_PARTS{$mode}{'index'}{$index_number}[2]);
+				$seq = $trimmed;
+			}
+			
+			# store it
+			$MODE_IXN_CHECK_true{$mode}{$index_number}{$seq} = $seq;
 		} close IN;
 		
 		# make HD hash
@@ -527,8 +630,15 @@ foreach $mode (@MODES_LIST) {
 		}
 	} else {
 		foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
-			$handle = "$mode.R$read_number";
-			open $handle, "| $gzip > $dex_path/$out_name/$out_name.$mode.R$read_number.fq.gz";
+			if ($MODE_SPECIAL{$mode}{'batch_size'}<1) {
+				$handle = "$mode.R$read_number";
+				open $handle, "| $gzip > $dex_path/$out_name/$out_name.$mode.R$read_number.fq.gz";
+			} else {
+				$MODE_SPECIAL{$mode}{'current_batch'} = sprintf("%03d", 1);
+				$MODE_SPECIAL{$mode}{'batch_increment'} = $MODE_SPECIAL{$mode}{'batch_size'};
+				$handle = "$mode.".$MODE_SPECIAL{$mode}{'current_batch'}.".R$read_number";
+				open $handle, "| $gzip > $dex_path/$out_name/$out_name.$handle.fq.gz";
+			}
 		}
 	}
 }
@@ -609,8 +719,18 @@ while ($in_tag[1] = <R1IN>) {
 			if ($ix_fail < 1 && $ix_pass == $MODE_ixCT{$mode}) {
 				$read_passing = 1;
 				$MODE_assigned{$mode}++;
+				
 				# start compiling the read name
-				$read_name = "\@$corrected_combined";
+				$read_name = "\@";
+				
+				# check ascii
+				if ($MODE_SPECIAL{$mode}{'ascii'} < 1) {
+					$read_name .= "$corrected_combined";
+				} else {
+					$collapsed_corrected = collapse_barcode($corrected_combined);
+					$read_name .= "$collapsed_corrected";
+				}
+				
 				# pull special fields
 				if (defined $DEX_PARTS{$mode}{'other'}) {
 					foreach $special_field (keys %{$DEX_PARTS{$mode}{'other'}}) {
@@ -625,9 +745,15 @@ while ($in_tag[1] = <R1IN>) {
 						$read_name .= ":$special_field=$pulled_sequence";
 					}
 				}
+				
+				# add unique identifier
+				$read_name .= ":$MODE_assigned{$mode}";
+				
 				# add origID & number
-				$orig_name = $in_tag[1]; $orig_name =~ s/\s.+$//; $orig_name =~ s/\#.+$//; $orig_name =~ s/^\@//;
-				$read_name .= ":num=$MODE_assigned{$mode}:tag=$orig_name";
+				if ($MODE_SPECIAL{$mode}{'original'} < 1) {
+					$orig_name = $in_tag[1]; $orig_name =~ s/\s.+$//; $orig_name =~ s/\#.+$//; $orig_name =~ s/^\@//;
+					$read_name .= ":tag=$orig_name";
+				}
 				
 				# check for annot here
 				if (defined $MODE_ANNOT{$mode}) {
@@ -649,6 +775,24 @@ while ($in_tag[1] = <R1IN>) {
 							}
 						}
 						$MODE_CELLID_annot{$mode}{$corrected_combined} = $annot; # store it to annotation 'file' so it doesn't have to be re-checked later.
+					}
+				}
+				
+				# check batching files & close & start new if hitting increment
+				if ($MODE_SPECIAL{$mode}{'batch_size'}>1) {
+					if ($MODE_assigned{$mode} > $MODE_SPECIAL{$mode}{'batch_increment'}) {
+						if (defined $opt{'V'}) {print STDERR "Batching for mode $mode hit size allocation ($MODE_SPECIAL{$mode}{'batch_size'}) for batch $MODE_SPECIAL{$mode}{'current_batch'}. Closing files and opening next set.\n"};
+						# first close
+						foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
+							$handle = "$mode.".$MODE_SPECIAL{$mode}{'current_batch'}.".R$read_number";
+							close $handle;
+						}
+						$MODE_SPECIAL{$mode}{'current_batch'}++;
+						$MODE_SPECIAL{$mode}{'batch_increment'} += $MODE_SPECIAL{$mode}{'batch_size'};
+						foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
+							$handle = "$mode.".$MODE_SPECIAL{$mode}{'current_batch'}.".R$read_number";
+							open $handle, "| $gzip > $dex_path/$out_name/$out_name.$handle.fq.gz";
+						}
 					}
 				}
 				
@@ -675,7 +819,13 @@ while ($in_tag[1] = <R1IN>) {
 							$handle = "$mode.$annot.R$read_number";
 						}
 					} else {
-						$handle = "$mode.R$read_number";
+						
+						# check batching
+						if ($MODE_SPECIAL{$mode}{'batch_size'}>1) {
+							$handle = "$mode.R$read_number";
+						} else {
+							$handle = "$mode.".$MODE_SPECIAL{$mode}{'current_batch'}.".R$read_number";
+						}
 					}
 					print $handle "$read_name#0/$read_number\n$pulled_sequence\n\+\n$pulled_qual\n";
 				}
@@ -715,8 +865,13 @@ foreach $mode (@MODES_LIST) {
 		}
 	} else {
 		foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
-			$handle = "$mode.R$read_number";
-			close $handle;
+			if ($MODE_SPECIAL{$mode}{'batch_size'}>1) {
+				$handle = "$mode.R$read_number";
+				close $handle;
+			} else {
+				$handle = "$mode.".$MODE_SPECIAL{$mode}{'current_batch'}.".R$read_number";
+				close $handle;
+			}
 		}
 	}
 }
