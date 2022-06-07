@@ -833,9 +833,9 @@ while ($in_tag[1] = <R1IN>) {
 						
 						# check batching
 						if ($MODE_SPECIAL{$mode}{'batch_size'}>1) {
-							$handle = "$mode.R$read_number";
-						} else {
 							$handle = "$mode.".$MODE_SPECIAL{$mode}{'current_batch'}.".R$read_number";
+						} else {
+							$handle = "$mode.R$read_number";
 						}
 					}
 					print $handle "$read_name#0/$read_number\n$pulled_sequence\n\+\n$pulled_qual\n";
