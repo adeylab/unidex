@@ -761,7 +761,7 @@ while ($in_tag[1] = <R1IN>) {
 				$read_name .= ":$MODE_assigned{$mode}";
 				
 				# add origID & number
-				if ($MODE_SPECIAL{$mode}{'original'} < 1) {
+				if ($MODE_SPECIAL{$mode}{'original'} > 0) {
 					$orig_name = $in_tag[1]; $orig_name =~ s/\s.+$//; $orig_name =~ s/\#.+$//; $orig_name =~ s/^\@//;
 					$read_name .= ":tag=$orig_name";
 				}
