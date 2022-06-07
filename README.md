@@ -2,10 +2,7 @@
 universal demultiplexer for Adey/ORoak ops
 
 To set up, create a line in the config file for your application. Details are in the header for the file.
-
-Unidex options:
-
-UNIDEX (Universal Demultiplexer, v0.210607-test1)
+UNIDEX (Universal Demultiplexer, v0.220604)
 
 Usage:
 
@@ -21,6 +18,9 @@ Run Options:
   -R  [STR]   Run Folder (where fastq files are present)
   -M  [LIST]  Mode list - modes must be specified in the modes.cfg file (/home/groups/oroaklab/demultiplex/unidex_modes.cfg)
               Modes must be comma separated and will demultiplex in specified order listed.
+  -l          Delayed mode. Will wait until fastq files are propagated
+              in the specified fastq directory (-r), then will run.
+              Only works when specifying run name, not individual fastq files.
 
 Default Options:
   -O  [STR]   Output folder (def = run name, -R)
@@ -43,6 +43,10 @@ Other Options:
               [mode1]=[annot_file1],[mode2]=[annot_file2],etc... OR
                           First column of annot file designates mode for thast annot
   -u          Only report a read to the first mode that it matches (def = all)
+  -n  [INT]   Only process the first n reads of the input fastq (def = all)
+  -c  [STR]   File for compressing base triplets in reads names. (/home/groups/oroaklab/src/unidex/triplet2ascii.txt)
+              It is strongly discouraged to use a different file for this.
   -g  [STR]   Gzip command (def = gzip)
   -z  [STR]   Zcat command (def = zcat)
   -V          Verbose / debug mode (outputs to STDERR)
+
