@@ -56,6 +56,7 @@ Other Options:
               [mode1]=[annot_file1],[mode2]=[annot_file2],etc... OR
 			  First column of annot file designates mode for thast annot
   -u          Only report a read to the first mode that it matches (def = all)
+  -n  [INT]   Only process the first n reads of the input fastq (def = all)
   -c  [STR]   File for compressing base triplets in reads names. ($triplet2ascii_file)
               It is strongly discouraged to use a different file for this.
   -g  [STR]   Gzip command (def = $gzip)
@@ -71,7 +72,7 @@ $input_params = join(" ", @ARGV);
 
 # load & parse options
 use Getopt::Std; %opt = ();
-getopts("R:M:O:r:o:m:1:2:3:4:D:VS:g:A:uLI:lc:", \%opt);
+getopts("R:M:O:r:o:m:1:2:3:4:D:VS:g:A:uLI:lc:n:", \%opt);
 
 # first check if mode file is queried
 if (defined $opt{'L'}) {
@@ -658,6 +659,16 @@ if (defined $opt{'V'}) {print STDERR "INFO: Pulling reads and matching to indexe
 %MODE_assigned = (); $total_reads = 0;
 while ($in_tag[1] = <R1IN>) {
 	$total_reads++;
+	
+	# check if -n flagged
+	if (defined $opt{'n'}) {
+		if ($total_reads>$opt{'n'}) {
+			print STDERR "INFO: Total reads analyzed is $opt{'n'}, stopping based on -n flag.\n";
+			close_all_files();
+			exit;
+		}
+	}
+	
 	# load in read from each file
 	chomp $in_tag[1]; $in_seq[1] = <R1IN>; chomp $in_seq[1]; $null = <R1IN>; $in_qual[1] = <R1IN>; chomp $in_qual[1];
 	if ($read2_fastq ne "null") {$in_tag[4] = <R2IN>; chomp $in_tag[4]; $in_seq[4] = <R2IN>; chomp $in_seq[4]; $null = <R2IN>; $in_qual[4] = <R2IN>; chomp $in_qual[4]};
@@ -845,32 +856,35 @@ while ($in_tag[1] = <R1IN>) {
 	}
 }
 
-# close files
-close FAILR1;
-if ($read2_fastq ne "null") {close FAILR2};
-if ($index1_fastq ne "null") {close FAILI1};
-if ($index2_fastq ne "null") {close FAILI2};
+close_all_files();
 
-foreach $mode (@MODES_LIST) {
-	if (defined $MODE_ANNOT{$mode}) {
-		foreach $annot (keys %{$MODE_ANNOT{$mode}}) {
+sub close_all_files {
+	close FAILR1;
+	if ($read2_fastq ne "null") {close FAILR2};
+	if ($index1_fastq ne "null") {close FAILI1};
+	if ($index2_fastq ne "null") {close FAILI2};
+
+	foreach $mode (@MODES_LIST) {
+		if (defined $MODE_ANNOT{$mode}) {
+			foreach $annot (keys %{$MODE_ANNOT{$mode}}) {
+				foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
+					$handle = "$mode.$annot.R$read_number";
+					close $handle;
+				}
+			}
 			foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
-				$handle = "$mode.$annot.R$read_number";
+				$handle = "$mode.unassigned.R$read_number";
 				close $handle;
 			}
-		}
-		foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
-			$handle = "$mode.unassigned.R$read_number";
-			close $handle;
-		}
-	} else {
-		foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
-			if ($MODE_SPECIAL{$mode}{'batch_size'}>1) {
-				$handle = "$mode.R$read_number";
-				close $handle;
-			} else {
-				$handle = "$mode.".$MODE_SPECIAL{$mode}{'current_batch'}.".R$read_number";
-				close $handle;
+		} else {
+			foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
+				if ($MODE_SPECIAL{$mode}{'batch_size'}>1) {
+					$handle = "$mode.R$read_number";
+					close $handle;
+				} else {
+					$handle = "$mode.".$MODE_SPECIAL{$mode}{'current_batch'}.".R$read_number";
+					close $handle;
+				}
 			}
 		}
 	}
