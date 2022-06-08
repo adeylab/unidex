@@ -23,17 +23,18 @@ unidex [options]
 
 Info Options:
   -L          List modes present in the mode config file (def = $modes_file)
-              Can specifiy a different mode file with -m and it will list modes in that file.
+                Can specifiy a different mode file with -m and it will list modes in that file.
+                Can also provide an argument to match to refine list, e.g. 's3'
   -I  [MODE]  Provide info on one or more comma separated modes as detailed in the specified
-              modes file (-m or default).
+                modes file (-m or default).
 
 Run Options:
   -R  [STR]   Run Folder (where fastq files are present)
   -M  [LIST]  Mode list - modes must be specified in the modes.cfg file ($modes_file)
-              Modes must be comma separated and will demultiplex in specified order listed.
+                Modes must be comma separated and will demultiplex in specified order listed.
   -l          Delayed mode. Will wait until fastq files are propagated
-              in the specified fastq directory (-r), then will run.
-              Only works when specifying run name, not individual fastq files.
+                in the specified fastq directory (-r), then will run.
+                Only works when specifying run name, not individual fastq files.
 
 Default Options:
   -O  [STR]   Output folder (def = run name, -R)
@@ -52,13 +53,13 @@ Fastq Input (default = auto detect):
   
 Other Options:
   -A  [STR]   Annotation file(s), comma separated with mode specified
-              If only one mode is specified, then it will default to that mode
-              [mode1]=[annot_file1],[mode2]=[annot_file2],etc... OR
-			  First column of annot file designates mode for thast annot
+                If only one mode is specified, then it will default to that mode
+                [mode1]=[annot_file1],[mode2]=[annot_file2],etc... OR
+			    First column of annot file designates mode for thast annot
   -u          Only report a read to the first mode that it matches (def = all)
   -n  [INT]   Only process the first n reads of the input fastq (def = all)
   -c  [STR]   File for compressing base triplets in reads names. ($triplet2ascii_file)
-              It is strongly discouraged to use a different file for this.
+                It is strongly discouraged to use a different file for this.
   -g  [STR]   Gzip command (def = $gzip)
   -z  [STR]   Zcat command (def = $zcat)
   -V          Verbose / debug mode (outputs to STDERR)
@@ -87,7 +88,13 @@ if (defined $opt{'L'}) {
 			}
 		} else {
 			@P = split(/\s/, $l);
-			print "\t$P[0]\n";
+			if (defined $ARGV[0]) {
+				if ($P[0] =~ /$ARGV[0]/i) {
+					print "\t$P[0]\n";
+				}
+			} else {
+				print "\t$P[0]\n";
+			}
 		}
 	} close MODES;
 	print "\n";
