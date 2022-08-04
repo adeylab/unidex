@@ -423,6 +423,9 @@ while ($l = <MODES>) {
 						} elsif ($flag =~ /_rc/) {
 							$index_number =~ s/_rc//; $index_number =~ s/index//;
 							$DEX_PARTS{$mode}{'index_rev'}{$index_number} = 1;
+						} elsif ($flag =~ /_x/) {
+							$index_number =~ s/_rc//; $index_number =~ s/index//;
+							$DEX_PARTS{$mode}{'index_x'}{$index_number} = 1;
 						} elsif ($flag =~ /batch/) {
 							($null,$batch_size) = split(/:/, $flag);
 							if ($batch_size < $min_size_for_batching) {
@@ -727,7 +730,9 @@ while ($in_tag[1] = <R1IN>) {
 					if (defined $MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}) {
 						if (defined $opt{'V'}) {print STDERR "pass! Corrected index = $MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}\n"};
 						$ix_pass++;
-						$corrected_combined .= "$MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}";
+						if (!defined $DEX_PARTS{$mode}{'index_x'}{$index_number}) {
+							$corrected_combined .= "$MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}";
+						}
 					} else {
 						if (defined $opt{'V'}) {print STDERR "failed, skipping read for $mode.\n"};
 						$ix_fail++; $index_number = $MODE_ixCT{$mode}+1;
