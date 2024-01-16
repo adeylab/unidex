@@ -1,7 +1,9 @@
 # unidex
 Universal demultiplexer for Adey Lab
 
-To set up, create a line in the config file for your application. Details are in the header for the file.
+Adjust default parameters in the unidex.cfg file to reflect paths and excutables to match your system.
+
+Next, create a line in the config file for your application. Details are in the header for the file for how to set up a mode.
 
 
 ## Usage:
@@ -30,6 +32,7 @@ unidex [options]
   -d  [INT]   Max allowed hamming distance (def = 2)
 ```
 ### Default Locations:
+Defaults are specified in unidex.cfg, can be overridden here.
 ```
   -r  [PATH]  Fastq folder full path
   -o  [PATH]  Output folder
@@ -50,9 +53,9 @@ unidex [options]
                           First column of annot file designates mode for thast annot
   -u          Only report a read to the first mode that it matches (def = all)
   -n  [INT]   Only process the first n reads of the input fastq (def = all)
-  -c  [STR]   File for compressing base triplets in reads names.
+  -c  [STR]   File for compressing base triplets in reads names. (def = in unidex.cfg file)
               It is strongly discouraged to use a different file for this.
-  -g  [STR]   Gzip command (def = gzip)
-  -z  [STR]   Zcat command (def = zcat)
+  -g  [STR]   Gzip command (def = in unidex.cfg file)
+  -z  [STR]   Zcat command (def = in unidex.cfg file)
   -V          Verbose / debug mode (outputs to STDERR)
 ```
