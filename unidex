@@ -2,10 +2,10 @@
 
 # Defaults here (currently hardcoded, move to config file later)
 
-$modes_file = "/home/groups/oroaklab/demultiplex/unidex_modes.cfg";
-$fastq_path = "/home/groups/oroaklab/fastq";
-$dex_path = "/home/groups/oroaklab/demultiplex";
-$triplet2ascii_file = "/home/groups/oroaklab/src/unidex/triplet2ascii.txt";
+$modes_file = "/home/groups/ravnica/demultiplex/unidex_modes.cfg";
+$fastq_path = "/home/groups/ravnica/fastq";
+$dex_path = "/home/groups/ravnica/demultiplex";
+$triplet2ascii_file = "/home/groups/ravnica/src/unidex-perl/triplet2ascii.txt";
 $def_hd = 2;
 $gzip = "gzip";
 $zcat = "zcat";
@@ -421,11 +421,9 @@ while ($l = <MODES>) {
 							$index_number =~ s/_hd//; $index_number =~ s/index//;
 							$INDEX_HAMMING{$mode}{'index'}{$index_number} = $hd;
 						} elsif ($flag =~ /_rc/) {
+							$index_number = $flag;
 							$index_number =~ s/_rc//; $index_number =~ s/index//;
 							$DEX_PARTS{$mode}{'index_rev'}{$index_number} = 1;
-						} elsif ($flag =~ /_x/) {
-							$index_number =~ s/_rc//; $index_number =~ s/index//;
-							$DEX_PARTS{$mode}{'index_x'}{$index_number} = 1;
 						} elsif ($flag =~ /batch/) {
 							($null,$batch_size) = split(/:/, $flag);
 							if ($batch_size < $min_size_for_batching) {
@@ -438,6 +436,10 @@ while ($l = <MODES>) {
 							$ASCII_USE = 1;
 						} elsif ($flag =~ /original/) {
 							$MODE_SPECIAL{$mode}{'original'} = 1;
+						} elsif ($flag =~ /_omit/) {
+							$index_number = $flag;
+							$index_number =~ s/_omit//; $index_number =~ s/index//;
+							$DEX_PARTS{$mode}{'index_omit'}{$index_number} = 1;
 						} else {
 							print STDERR "\tWARNING: flag field ($flag) found for mode $mode, but cannot interpret the flag. See config file for description of viable flags. Ignoring field.\n";
 						}
@@ -717,7 +719,11 @@ while ($in_tag[1] = <R1IN>) {
 						if (defined $MODE_IXN_CHECK_true{$mode}{$index_number}{$scanned_subsequence}) {
 							if (defined $opt{'V'}) {print STDERR "pass! Corrected index = $MODE_IXN_CHECK_true{$mode}{$index_number}{$scanned_subsequence} pulled as subset of $pulled_sequence\n"};
 							$ix_pass++;
-							$corrected_combined .= "$MODE_IXN_CHECK_true{$mode}{$index_number}{$scanned_subsequence}";
+							if ($DEX_PARTS{$mode}{'index_omit'}{$index_number} > 0) { # omit index
+								#$corrected_combined .= "i$index_number\_";
+							} else {
+								$corrected_combined .= "$MODE_IXN_CHECK_true{$mode}{$index_number}{$scanned_subsequence}";
+							}
 							$search_start+=$DEX_PARTS{$mode}{'index'}{$index_number}[2];
 							$subset_pass++;
 						}
@@ -730,7 +736,9 @@ while ($in_tag[1] = <R1IN>) {
 					if (defined $MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}) {
 						if (defined $opt{'V'}) {print STDERR "pass! Corrected index = $MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}\n"};
 						$ix_pass++;
-						if (!defined $DEX_PARTS{$mode}{'index_x'}{$index_number}) {
+						if ($DEX_PARTS{$mode}{'index_omit'}{$index_number} > 0) { # omit index
+							#$corrected_combined .= "i$index_number\_";
+						} else {
 							$corrected_combined .= "$MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}";
 						}
 					} else {
