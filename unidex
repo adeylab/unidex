@@ -41,7 +41,7 @@ $min_size_for_batching = 10000;
 
 $die = "
 
-UNIDEX (Universal Demultiplexer, v0.220604)
+UNIDEX (Universal Demultiplexer, v0.240116)
 
 Usage:
 
