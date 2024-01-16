@@ -1,14 +1,40 @@
 #!/usr/bin/perl
 
-# Defaults here (currently hardcoded, move to config file later)
+BEGIN {
+	use FindBin '$RealBin';
+	push @INC, $RealBin;
+}
 
-$modes_file = "/home/groups/ravnica/demultiplex/unidex_modes.cfg";
-$fastq_path = "/home/groups/ravnica/fastq";
-$dex_path = "/home/groups/ravnica/demultiplex";
-$triplet2ascii_file = "/home/groups/ravnica/src/unidex-perl/triplet2ascii.txt";
-$def_hd = 2;
-$gzip = "gzip";
-$zcat = "zcat";
+use Cwd;
+use Getopt::Std; %opt = ();
+
+# LOAD DEFAULTS
+$DEFAULTS_FILE = "$RealBin/unidex.cfg";
+if (-e "$ENV{'HOME'}/.unidex.cfg") {
+	$DEFAULTS_FILE = "$ENV{'HOME'}/.unidex.cfg";
+} elsif (-e "$ENV{'HOME'}/unidex.cfg") {
+	$DEFAULTS_FILE = "$ENV{'HOME'}/unidex.cfg";
+} elsif ($ARGV[0] =~ /\.cfg$/) {
+	# special config specification as first argument - advanced use only
+	$DEFAULTS_FILE = shift(@ARGV);
+	print STDERR "INFO: Special config file detected as first argument. ($ARGV[0])\n";
+}
+
+open CFG, "$DEFAULTS_FILE";
+while ($l = <CFG>) {
+	if ($l !~/^#/) {
+		chomp $l;
+		($var,$val) = split(/=/, $l);
+		if ($var eq "modes_file") {$modes_file = $val}
+		elsif ($var eq "fastq_path") {$fastq_path = $val}
+		elsif ($var eq "dex_path") {$dex_path = $val}
+		elsif ($var eq "triplet2ascii_file") {$triplet2ascii_file = $val}
+		elsif ($var eq "def_hd") {$def_hd = $val}
+		elsif ($var eq "gzip") {$gzip = $val}
+		elsif ($var eq "zcat") {$zcat = $val}
+	}
+} close CFG;
+
 $min_size_for_batching = 10000;
 
 # Description here
@@ -72,7 +98,6 @@ if (!defined $ARGV[0]) {die $die};
 $input_params = join(" ", @ARGV);
 
 # load & parse options
-use Getopt::Std; %opt = ();
 getopts("R:M:O:r:o:m:1:2:3:4:D:VS:g:A:uLI:lc:n:", \%opt);
 
 # first check if mode file is queried
