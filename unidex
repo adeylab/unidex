@@ -436,35 +436,42 @@ while ($l = <MODES>) {
 			$MODE_SPECIAL{$mode}{'batch_size'} = 0; # set default batch size to 0 (all reads)
 			$MODE_SPECIAL{$mode}{'ascii'} = 0;
 			$MODE_SPECIAL{$mode}{'original'} = 0;
+			$MODE_SPECIAL{$mode}{'prefix'} = "null";
 			for ($i = 5; $i < @P; $i++) {
 				($index_name,$file) = split(/=/, $P[$i]);
 				if ($index_name =~ /flag/) {
 					@SPECIAL_FLAGS = split(/,/, $file);
 					foreach $flag (@SPECIAL_FLAGS) {
-						if ($flag =~ /_hd:/) {
+						if ($flag =~ /_hd:/) { # override hamming distance for index
 							($index_number,$hd) = split(/:/, $flag);
 							$index_number =~ s/_hd//; $index_number =~ s/index//;
 							$INDEX_HAMMING{$mode}{'index'}{$index_number} = $hd;
-						} elsif ($flag =~ /_rc/) {
+						} elsif ($flag =~ /_rc/) { # use reverse complement
 							$index_number = $flag;
 							$index_number =~ s/_rc//; $index_number =~ s/index//;
 							$DEX_PARTS{$mode}{'index_rev'}{$index_number} = 1;
-						} elsif ($flag =~ /batch/) {
+						} elsif ($flag =~ /batch/) { # split into batches
 							($null,$batch_size) = split(/:/, $flag);
 							if ($batch_size < $min_size_for_batching) {
 								print STDERR "\tWARNING: batch size for mode $mode is set to $batch_size, less than the minimum of $min_size_for_batching. Forcing to $min_size_for_batching.\n";
 								$batch_size = $min_size_for_batching;
 							}
 							$MODE_SPECIAL{$mode}{'batch_size'} = $batch_size;
-						} elsif ($flag =~ /ascii/) {
+						} elsif ($flag =~ /ascii/) { # use ascii codes for barcode
 							$MODE_SPECIAL{$mode}{'ascii'} = 1;
 							$ASCII_USE = 1;
-						} elsif ($flag =~ /original/) {
+						} elsif ($flag =~ /original/) { # include original read name
 							$MODE_SPECIAL{$mode}{'original'} = 1;
-						} elsif ($flag =~ /_omit/) {
+						} elsif ($flag =~ /_omit/) { # omit index from final read name
 							$index_number = $flag;
 							$index_number =~ s/_omit//; $index_number =~ s/index//;
 							$DEX_PARTS{$mode}{'index_omit'}{$index_number} = 1;
+						} elsif ($flag =~ /prefix/) { # add a prefix to the output cell IDs
+							$prefix = $flag; $prefix =~ s/^prefix://;
+							$MODE_SPECIAL{$mode}{'prefix'} = $prefix;
+						} elsif ($flag =~ /suffix/) { # add a suffix to the output cell IDs
+							$suffix = $flag; $suffix =~ s/^suffix://;
+							$MODE_SPECIAL{$mode}{'suffix'} = $suffix;
 						} else {
 							print STDERR "\tWARNING: flag field ($flag) found for mode $mode, but cannot interpret the flag. See config file for description of viable flags. Ignoring field.\n";
 						}
@@ -882,6 +889,15 @@ while ($in_tag[1] = <R1IN>) {
 						} else {
 							$handle = "$mode.R$read_number";
 						}
+					}
+					# check if prefix or suffix
+					if ($MODE_SPECIAL{$mode}{'prefix'} ne "null") {
+						$read_name =~ s/^\@//;
+						$new_name = "\@".$MODE_SPECIAL{$mode}{'prefix'}."_".$read_name;
+						$read_name = $new_name;
+					}
+					if ($MODE_SPECIAL{$mode}{'suffix'} ne "null") {
+						$read_name .= "_".$MODE_SPECIAL{$mode}{'suffix'};
 					}
 					print $handle "$read_name#0/$read_number\n$pulled_sequence\n\+\n$pulled_qual\n";
 				}
