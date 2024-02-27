@@ -25,6 +25,7 @@ while ($l = <CFG>) {
 	if ($l !~/^#/) {
 		chomp $l;
 		($var,$val) = split(/=/, $l);
+		$val =~ s/\"//g;
 		if ($var eq "modes_file") {$modes_file = $val}
 		elsif ($var eq "fastq_path") {$fastq_path = $val}
 		elsif ($var eq "dex_path") {$dex_path = $val}
@@ -32,6 +33,7 @@ while ($l = <CFG>) {
 		elsif ($var eq "def_hd") {$def_hd = $val}
 		elsif ($var eq "gzip") {$gzip = $val}
 		elsif ($var eq "zcat") {$zcat = $val}
+		elsif ($var eq "pigz") {$pigz = $val}
 	}
 } close CFG;
 
@@ -61,6 +63,11 @@ Run Options:
   -l          Delayed mode. Will wait until fastq files are propagated
                 in the specified fastq directory (-r), then will run.
                 Only works when specifying run name, not individual fastq files.
+  -t  [INT]   Threads for pigz compression (per out), def = 1 (gzip).
+                Must have pigz command-line callable. Will run each compression
+                using the specified thread count. (e.g. 2*t per mode)
+                Currently only for mode-matched outputs. Fail, unassigned, and
+                input decompression all use a single thread for each file.
 
 Default Options:
   -O  [STR]   Output folder (def = run name, -R)
@@ -88,6 +95,7 @@ Other Options:
                 It is strongly discouraged to use a different file for this.
   -g  [STR]   Gzip command (def = $gzip)
   -z  [STR]   Zcat command (def = $zcat)
+  -p  [STR]   Pigz command (def = $pigz)
   -V          Verbose / debug mode (outputs to STDERR)
 
 ";
@@ -98,7 +106,7 @@ if (!defined $ARGV[0]) {die $die};
 $input_params = join(" ", @ARGV);
 
 # load & parse options
-getopts("R:M:O:r:o:m:1:2:3:4:D:VS:g:A:uLI:lc:n:", \%opt);
+getopts("R:M:O:r:o:m:1:2:3:4:D:VS:g:A:uLI:lc:n:p:t:", \%opt);
 
 # first check if mode file is queried
 if (defined $opt{'L'}) {
@@ -666,7 +674,11 @@ foreach $mode (@MODES_LIST) {
 		foreach $annot (keys %{$MODE_ANNOT{$mode}}) {
 			foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
 				$handle = "$mode.$annot.R$read_number";
-				open $handle, "| $gzip > $dex_path/$out_name/$out_name.$mode.$annot.R$read_number.fq.gz";
+				if (defined $opt{'t'}) {
+					open $handle, "| $pigz -p $opt{'t'} > $dex_path/$out_name/$out_name.$mode.$annot.R$read_number.fq.gz";
+				} else {
+					open $handle, "| $gzip > $dex_path/$out_name/$out_name.$mode.$annot.R$read_number.fq.gz";
+				}
 			}
 		}
 		foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
@@ -677,12 +689,20 @@ foreach $mode (@MODES_LIST) {
 		foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
 			if ($MODE_SPECIAL{$mode}{'batch_size'}<1) {
 				$handle = "$mode.R$read_number";
-				open $handle, "| $gzip > $dex_path/$out_name/$out_name.$mode.R$read_number.fq.gz";
+				if (defined $opt{'t'}) {
+					open $handle, "| $pigz -p $opt{'t'} > $dex_path/$out_name/$out_name.$mode.R$read_number.fq.gz";
+				} else {
+					open $handle, "| $gzip > $dex_path/$out_name/$out_name.$mode.R$read_number.fq.gz";
+				}
 			} else {
 				$MODE_SPECIAL{$mode}{'current_batch'} = sprintf("%03d", 1);
 				$MODE_SPECIAL{$mode}{'batch_increment'} = $MODE_SPECIAL{$mode}{'batch_size'};
 				$handle = "$mode.".$MODE_SPECIAL{$mode}{'current_batch'}.".R$read_number";
-				open $handle, "| $gzip > $dex_path/$out_name/$out_name.$handle.fq.gz";
+				if (defined $opt{'t'}) {
+					open $handle, "| $pigz -p $opt{'t'} > $dex_path/$out_name/$out_name.$handle.fq.gz";
+				} else {
+					open $handle, "| $gzip > $dex_path/$out_name/$out_name.$handle.fq.gz";
+				}
 			}
 		}
 	}
