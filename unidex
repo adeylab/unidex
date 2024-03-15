@@ -43,7 +43,7 @@ $min_size_for_batching = 10000;
 
 $die = "
 
-UNIDEX (Universal Demultiplexer, v0.240116)
+UNIDEX (Universal Demultiplexer, v0.240315)
 
 Usage:
 
@@ -470,6 +470,9 @@ while ($l = <MODES>) {
 							$ASCII_USE = 1;
 						} elsif ($flag =~ /original/) { # include original read name
 							$MODE_SPECIAL{$mode}{'original'} = 1;
+						} elsif ($flag =~ /spacer/) { # include spacer between indexes
+							$spacer = $flag; $spacer =~ s/^.+://;
+							$DEX_PARTS{$mode}{'index_spacer'} = $spacer;
 						} elsif ($flag =~ /_omit/) { # omit index from final read name
 							$index_number = $flag;
 							$index_number =~ s/_omit//; $index_number =~ s/index//;
@@ -480,6 +483,14 @@ while ($l = <MODES>) {
 						} elsif ($flag =~ /suffix/) { # add a suffix to the output cell IDs
 							$suffix = $flag; $suffix =~ s/^suffix://;
 							$MODE_SPECIAL{$mode}{'suffix'} = $suffix;
+						} elsif ($flag =~ /name/) {
+							if ($ASCII_USE>0) {
+								print STDERR "\tWARNING: ascii use toggled for $mode, but also name use; ignoring name use to proceed.\n";
+							} else {
+								$index_number = $flag;
+								$index_number =~ s/_name//; $index_number =~ s/index//;
+								$DEX_PARTS{$mode}{'index_name'}{$index_number} = 1;
+							}
 						} else {
 							print STDERR "\tWARNING: flag field ($flag) found for mode $mode, but cannot interpret the flag. See config file for description of viable flags. Ignoring field.\n";
 						}
@@ -611,6 +622,12 @@ foreach $mode (@MODES_LIST) {
 			
 			# store it
 			$MODE_IXN_CHECK_true{$mode}{$index_number}{$seq} = $seq;
+			
+			# check index name usage
+			if (defined $DEX_PARTS{$mode}{'index_name'}{$index_number}) {
+				$DEX_PARTS{$mode}{'index_id'}{$index_number}{$seq} = $P[0];
+			}
+			
 		} close IN;
 		
 		# make HD hash
@@ -760,6 +777,7 @@ while ($in_tag[1] = <R1IN>) {
 			$ix_pass = 0; $ix_fail = 0;
 			$corrected_combined = "";
 			for ($index_number = 1; $index_number <= $MODE_ixCT{$mode}; $index_number++) {
+				$added_combined = "";
 				$pulled_sequence = substr($in_seq[$DEX_PARTS{$mode}{'index'}{$index_number}[0]],
 									$DEX_PARTS{$mode}{'index'}{$index_number}[1],
 									$DEX_PARTS{$mode}{'index'}{$index_number}[2]);
@@ -771,11 +789,22 @@ while ($in_tag[1] = <R1IN>) {
 						if (defined $MODE_IXN_CHECK_true{$mode}{$index_number}{$scanned_subsequence}) {
 							if (defined $opt{'V'}) {print STDERR "pass! Corrected index = $MODE_IXN_CHECK_true{$mode}{$index_number}{$scanned_subsequence} pulled as subset of $pulled_sequence\n"};
 							$ix_pass++;
-							if ($DEX_PARTS{$mode}{'index_omit'}{$index_number} > 0) { # omit index
-								#$corrected_combined .= "i$index_number\_";
-							} else {
-								$corrected_combined .= "$MODE_IXN_CHECK_true{$mode}{$index_number}{$scanned_subsequence}";
+							if (defined $DEX_PARTS{$mode}{'index_spacer'}) {
+								if ($index_number > 1) {$corrected_combined .= $DEX_PARTS{$mode}{'index_spacer'}};
 							}
+							if ($DEX_PARTS{$mode}{'index_omit'}{$index_number} > 0) { # omit index
+								# do nothing
+							} elsif ($DEX_PARTS{$mode}{'index_name'}{$index_number} > 0) { # index name use
+								$corrected_index = $DEX_PARTS{$mode}{'index_id'}{$index_number}{$scanned_subsequence};
+								if (defined $DEX_PARTS{$mode}{'index_id'}{$index_number}{$corrected_index}) {
+									$added_combined .= "$DEX_PARTS{$mode}{'index_id'}{$index_number}{$corrected_index}";
+								} else { # no id stored for the index - print index seq instead
+									$added_combined .= "$MODE_IXN_CHECK_true{$mode}{$index_number}{$scanned_subsequence}";
+								}
+							} else {
+								$added_combined .= "$MODE_IXN_CHECK_true{$mode}{$index_number}{$scanned_subsequence}";
+							}
+							$corrected_combined .= $added_combined;
 							$search_start+=$DEX_PARTS{$mode}{'index'}{$index_number}[2];
 							$subset_pass++;
 						}
@@ -788,11 +817,22 @@ while ($in_tag[1] = <R1IN>) {
 					if (defined $MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}) {
 						if (defined $opt{'V'}) {print STDERR "pass! Corrected index = $MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}\n"};
 						$ix_pass++;
-						if ($DEX_PARTS{$mode}{'index_omit'}{$index_number} > 0) { # omit index
-							#$corrected_combined .= "i$index_number\_";
-						} else {
-							$corrected_combined .= "$MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}";
+						if (defined $DEX_PARTS{$mode}{'index_spacer'}) {
+							if ($index_number > 1) {$corrected_combined .= $DEX_PARTS{$mode}{'index_spacer'}};
 						}
+						if ($DEX_PARTS{$mode}{'index_omit'}{$index_number} > 0) { # omit index
+							# do nothing
+						} elsif ($DEX_PARTS{$mode}{'index_name'}{$index_number} > 0) { # index name use
+							$corrected_index = $MODE_IXN_CHECK_true{$mode}{'index_id'}{$index_number}{$pulled_sequence};
+							if (defined $DEX_PARTS{$mode}{'index_id'}{$index_number}{$corrected_index}) {
+								$added_combined .= "$DEX_PARTS{$mode}{'index_id'}{$index_number}{$corrected_index}";
+							} else { # no id stored for the index - print index seq instead
+								$added_combined .= "$MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}";
+							}
+						} else {
+							$added_combined .= "$MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence}";
+						}
+						$corrected_combined .= $added_combined;
 					} else {
 						if (defined $opt{'V'}) {print STDERR "failed, skipping read for $mode.\n"};
 						$ix_fail++; $index_number = $MODE_ixCT{$mode}+1;
