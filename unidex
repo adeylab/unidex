@@ -445,6 +445,7 @@ while ($l = <MODES>) {
 			$MODE_SPECIAL{$mode}{'ascii'} = 0;
 			$MODE_SPECIAL{$mode}{'original'} = 0;
 			$MODE_SPECIAL{$mode}{'prefix'} = "null";
+			$MODE_SPECIAL{$mode}{'suffix'} = "null";
 			for ($i = 5; $i < @P; $i++) {
 				($index_name,$file) = split(/=/, $P[$i]);
 				if ($index_name =~ /flag/) {
@@ -919,6 +920,16 @@ while ($in_tag[1] = <R1IN>) {
 					}
 				}
 				
+				# check if prefix or suffix
+				if ($MODE_SPECIAL{$mode}{'prefix'} ne "null") {
+					$read_name =~ s/^\@//;
+					$new_name = "\@".$MODE_SPECIAL{$mode}{'prefix'}."_".$read_name;
+					$read_name = $new_name;
+				}
+				if ($MODE_SPECIAL{$mode}{'suffix'} ne "null") {
+					$read_name .= "_".$MODE_SPECIAL{$mode}{'suffix'};
+				}
+				
 				# pull reads $ quals then print
 				foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
 					if ($DEX_PARTS{$mode}{'read'}{$read_number}[2] < 1) { # rest of read from start position
@@ -950,15 +961,7 @@ while ($in_tag[1] = <R1IN>) {
 							$handle = "$mode.R$read_number";
 						}
 					}
-					# check if prefix or suffix
-					if ($MODE_SPECIAL{$mode}{'prefix'} ne "null") {
-						$read_name =~ s/^\@//;
-						$new_name = "\@".$MODE_SPECIAL{$mode}{'prefix'}."_".$read_name;
-						$read_name = $new_name;
-					}
-					if ($MODE_SPECIAL{$mode}{'suffix'} ne "null") {
-						$read_name .= "_".$MODE_SPECIAL{$mode}{'suffix'};
-					}
+					
 					print $handle "$read_name#0/$read_number\n$pulled_sequence\n\+\n$pulled_qual\n";
 				}
 			}
