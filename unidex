@@ -824,7 +824,7 @@ while ($in_tag[1] = <R1IN>) {
 						if ($DEX_PARTS{$mode}{'index_omit'}{$index_number} > 0) { # omit index
 							# do nothing
 						} elsif ($DEX_PARTS{$mode}{'index_name'}{$index_number} > 0) { # index name use
-							$corrected_index = $MODE_IXN_CHECK_true{$mode}{'index_id'}{$index_number}{$pulled_sequence};
+							$corrected_index = $MODE_IXN_CHECK_true{$mode}{$index_number}{$pulled_sequence};
 							if (defined $DEX_PARTS{$mode}{'index_id'}{$index_number}{$corrected_index}) {
 								$added_combined .= "$DEX_PARTS{$mode}{'index_id'}{$index_number}{$corrected_index}";
 							} else { # no id stored for the index - print index seq instead
